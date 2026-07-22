@@ -1359,10 +1359,6 @@
     "baseUrl": "https://codestral.mistral.ai/v1/chat/completions",
     "format": "openai"
   },
-  "coze": {
-    "baseUrl": "https://api.coze.com/v1/chat/completions",
-    "format": "openai"
-  },
   "crof": {
     "baseUrl": "https://crof.ai/v1/chat/completions",
     "format": "openai"
@@ -1378,10 +1374,6 @@
   "dgrid": {
     "baseUrl": "https://api.dgrid.ai/v1/chat/completions",
     "validateUrl": "https://api.dgrid.ai/v1/models",
-    "format": "openai"
-  },
-  "dify": {
-    "baseUrl": "https://api.dify.ai/v1/chat/completions",
     "format": "openai"
   },
   "digitalocean": {
@@ -1420,10 +1412,6 @@
   },
   "doubao": {
     "baseUrl": "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
-    "format": "openai"
-  },
-  "factory": {
-    "baseUrl": "https://api.factory.ai/v1/chat/completions",
     "format": "openai"
   },
   "freeaiapikey": {
@@ -1562,10 +1550,6 @@
       }
     ]
   },
-  "iflytek": {
-    "baseUrl": "https://spark-api.xf-yun.com/v1/chat/completions",
-    "format": "openai"
-  },
   "inference-net": {
     "baseUrl": "https://api.inference.net/v1/chat/completions",
     "format": "openai"
@@ -1637,7 +1621,7 @@
     "format": "openai"
   },
   "liquid": {
-    "baseUrl": "https://api.liquid.ai/v1/chat/completions",
+    "baseUrl": "https://inference.liquid.ai/v1/chat/completions",
     "format": "openai"
   },
   "llamagate": {
@@ -1805,10 +1789,6 @@
         }
       }
     ]
-  },
-  "nlpcloud": {
-    "baseUrl": "https://api.nlpcloud.io/v1/chat/completions",
-    "format": "openai"
   },
   "nous-research": {
     "baseUrl": "https://inference-api.nousresearch.com/v1/chat/completions",

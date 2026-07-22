@@ -11,7 +11,7 @@ export default {
   },
   category: "apikey",
   transport: {
-    baseUrl: "https://api.liquid.ai/v1/chat/completions",
+    baseUrl: "https://inference.liquid.ai/v1/chat/completions",
   },
   models: [
     { id: "liquid-lfm-40b", name: "Liquid LFM 40B" },
