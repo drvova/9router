@@ -3,7 +3,7 @@ import { getProviderConnectionById } from "@/models";
 import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider } from "@/shared/constants/providers";
 import { GEMINI_CONFIG } from "@/lib/oauth/constants/oauth";
 import { refreshGoogleToken, refreshCodexToken, updateProviderCredentials } from "@/sse/services/tokenRefresh";
-import { resolveOllamaLocalHost } from "open-sse/config/providers.js";
+import { resolveOllamaLocalHost, PROVIDERS } from "open-sse/config/providers.js";
 import { getModelsByProviderId } from "open-sse/config/providerModels.js";
 import { resolveKiroModels } from "open-sse/services/kiroModels.js";
 import { resolveKimchiModels } from "open-sse/services/kimchiModels.js";
@@ -78,6 +78,38 @@ const createOpenAIModelsConfig = (url) => ({
   authPrefix: "Bearer ",
   parseResponse: parseOpenAIStyleModels
 });
+
+// Registry-derived fallback: any openai-format provider gets live /v1/models sync from
+// its transport (single source of truth) without a hand-written PROVIDER_MODELS_CONFIG
+// entry. Prefers transport.validateUrl (the wired /v1/models URL); otherwise applies the
+// standard /chat/completions -> /models swap. Honors a non-bearer auth header (e.g.
+// x-api-key) declared on the transport. Returns null when no plausible URL exists.
+const deriveModelsUrl = (transport) => {
+  if (transport.validateUrl) return transport.validateUrl;
+  const base = transport.baseUrl;
+  if (!base || !base.startsWith("http")) return null;
+  if (base.includes("/chat/completions")) return base.replace("/chat/completions", "/models");
+  return null;
+};
+
+const buildRegistryModelsConfig = (providerId) => {
+  const transport = PROVIDERS[providerId];
+  if (!transport || (transport.format && transport.format !== "openai")) return null;
+  const url = deriveModelsUrl(transport);
+  if (!url) return null;
+  const auth = transport.auth;
+  if (auth?.header && auth.header.toLowerCase() !== "authorization") {
+    return {
+      url,
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      authHeader: auth.header,
+      authPrefix: auth.scheme === "bearer" ? "Bearer " : "",
+      parseResponse: parseOpenAIStyleModels,
+    };
+  }
+  return createOpenAIModelsConfig(url);
+};
 
 const resolveQwenModelsUrl = (connection) => {
   const fallback = "https://portal.qwen.ai/v1/models";
@@ -541,7 +573,7 @@ export async function GET(request, { params }) {
       });
     }
 
-    const config = PROVIDER_MODELS_CONFIG[connection.provider];
+    const config = PROVIDER_MODELS_CONFIG[connection.provider] || buildRegistryModelsConfig(connection.provider);
     if (!config) {
       return NextResponse.json(
         { error: `Provider ${connection.provider} does not support models listing` },
