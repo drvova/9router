@@ -1,10 +1,13 @@
 // Provider icon paths under /public/providers.
-// Alias related brands; session-cache 404s so one miss never spams again.
+// Alias related brands; skip icons with no asset file so a known-missing brand never
+// fires a guaranteed 404; session-cache runtime 404s so any straggler never spams again.
+import { PROVIDER_ICON_FILES } from "./providerIconFiles.js";
 
 const ICON_ALIASES = {
   "perplexity-agent": "perplexity",
   "gitlab-duo": "gitlab",
   "vercel-ai-gateway": "vercel",
+  "github-models": "github",
 };
 
 // Runtime only — first 404 remembers id for the whole session
@@ -22,6 +25,8 @@ export function resolveProviderIconId(providerId) {
   if (failedIds.has(id)) return "";
   const aliased = ICON_ALIASES[id] || id;
   if (failedIds.has(aliased)) return "";
+  // No asset on disk → render the text fallback instead of firing a 404.
+  if (!PROVIDER_ICON_FILES.has(aliased)) return "";
   return aliased;
 }
 
