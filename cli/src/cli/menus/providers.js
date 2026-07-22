@@ -139,6 +139,33 @@ const APIKEY_PROVIDERS = {
 
 const ALL_PROVIDERS = { ...OAUTH_PROVIDERS, ...APIKEY_PROVIDERS };
 
+// The maps above are a curated shortlist kept for the quick-pick menu. The full registry
+// (140+ providers) is fetched once from the server so every apikey provider is addable via
+// the "Add other provider" search below. Catalog entries are merged into ALL_PROVIDERS for
+// id lookups (buildProviderHeader / showProviderDetail) but NOT into the iterated
+// APIKEY_PROVIDERS, so the main menu stays a short curated list. OAuth stays curated — those
+// need per-provider flow code. Single source of truth is the registry; failure is non-fatal.
+let CATALOG_APIKEY = [];
+let catalogLoaded = false;
+async function ensureCatalogLoaded() {
+  if (catalogLoaded) return;
+  try {
+    const res = await api.getProviderCatalog();
+    const list = res?.data?.apikey || [];
+    if (list.length) {
+      CATALOG_APIKEY = list;
+      for (const p of list) {
+        if (!ALL_PROVIDERS[p.id]) {
+          ALL_PROVIDERS[p.id] = { id: p.id, name: p.name || p.id, ...(p.alias ? { alias: p.alias } : {}) };
+        }
+      }
+      catalogLoaded = true;
+    }
+  } catch {
+    // server not ready — retry on next menu open
+  }
+}
+
 /**
  * Get auth type for provider
  * @param {string} providerId - Provider ID
@@ -167,6 +194,7 @@ function countConnectionsByProvider(connections) {
  * @param {Array<string>} breadcrumb - Breadcrumb path
  */
 async function showProvidersMenu(breadcrumb = []) {
+  await ensureCatalogLoaded();
   // Build provider items list
   const providerItems = [];
   
@@ -199,6 +227,22 @@ async function showProvidersMenu(breadcrumb = []) {
       }
     });
   });
+
+  // Search-add any of the 140+ registry providers not in the curated shortlist above.
+  if (CATALOG_APIKEY.length) {
+    providerItems.push({
+      label: () => `${COLORS.dim}── More ──${COLORS.reset}`,
+      action: async () => true,
+      isSeparator: true,
+    });
+    providerItems.push({
+      label: () => `➕ Add other provider (search ${CATALOG_APIKEY.length})`,
+      action: async (data) => {
+        await handleSearchAddProvider(data.connections, breadcrumb);
+        return true;
+      },
+    });
+  }
 
   // Custom provider nodes section
   providerItems.push({
@@ -237,6 +281,32 @@ async function showProvidersMenu(breadcrumb = []) {
     },
     items: providerItems
   });
+}
+
+/**
+ * Search the full registry catalog and open the chosen apikey provider to add a connection.
+ * @param {Array} connections - Current connections (for the detail view)
+ * @param {Array<string>} breadcrumb - Breadcrumb path
+ */
+async function handleSearchAddProvider(connections, breadcrumb = []) {
+  const term = (await prompt("Search provider (name or id, blank to cancel): ")).trim().toLowerCase();
+  if (!term) return;
+  const matches = CATALOG_APIKEY.filter(
+    (p) => p.id.toLowerCase().includes(term) || (p.name || "").toLowerCase().includes(term)
+  ).slice(0, 30);
+  if (!matches.length) {
+    showStatus(`No provider matches "${term}"`, "error");
+    await pause();
+    return;
+  }
+  clearScreen();
+  console.log(`\nMatches for "${term}":\n`);
+  matches.forEach((p, i) => console.log(`  ${i + 1}. ${p.name} ${COLORS.dim}(${p.id})${COLORS.reset}`));
+  console.log("  0. Cancel\n");
+  const num = parseInt((await prompt("Enter number: ")).trim(), 10);
+  if (!num || num < 1 || num > matches.length) return;
+  const chosen = matches[num - 1];
+  await showProviderDetail(chosen.id, "apikey", connections, [...breadcrumb, chosen.name]);
 }
 
 /**

@@ -178,6 +178,14 @@ async function getProviders() {
 }
 
 /**
+ * Get the full provider catalog from the registry (all addable providers).
+ * @returns {Promise<Object>} { success, data: { apikey: [...], oauth: [...] } }
+ */
+async function getProviderCatalog() {
+  return makeRequest("GET", "/api/providers/catalog");
+}
+
+/**
  * Get provider by ID
  * @param {string} id - Provider ID
  * @returns {Promise<Object>} { success, data: { connection } }
@@ -499,6 +507,7 @@ module.exports = {
   
   // Providers
   getProviders,
+  getProviderCatalog,
   getProviderById,
   testProvider,
   deleteProvider,
