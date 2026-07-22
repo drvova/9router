@@ -11,7 +11,7 @@ export default {
   },
   category: "apikey",
   transport: {
-    baseUrl: "https://opengateway.gitlawb.com/v1/xiaomi-mimo",
+    baseUrl: "https://opengateway.gitlawb.com/v1/xiaomi-mimo/chat/completions",
     headers: { "User-Agent": "OpenClaude/1.0 (linux; x86_64)", "X-Title": "OpenClaude CLI", "HTTP-Referer": "https://github.com/Gitlawb/openclaude" },
   },
   models: [

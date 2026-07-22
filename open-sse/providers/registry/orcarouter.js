@@ -11,7 +11,7 @@ export default {
   },
   category: "apikey",
   transport: {
-    baseUrl: "https://api.orcarouter.ai/v1",
+    baseUrl: "https://api.orcarouter.ai/v1/chat/completions",
     headers: { "HTTP-Referer": "https://endpoint-proxy.local", "X-Title": "Endpoint Proxy" },
   },
   // Multi-endpoint: pick the transport matching client sourceFormat to skip translation.
@@ -19,7 +19,7 @@ export default {
   transports: [
     {
       format: "openai",
-      baseUrl: "https://api.orcarouter.ai/v1",
+      baseUrl: "https://api.orcarouter.ai/v1/chat/completions",
       auth: { combined: true, header: "Authorization", scheme: "bearer" },
     },
     {

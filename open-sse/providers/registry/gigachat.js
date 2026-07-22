@@ -9,7 +9,7 @@ export default {
   },
   category: "apikey",
   transport: {
-    baseUrl: "https://gigachat.devices.sberbank.ru/api/v1",
+    baseUrl: "https://gigachat.devices.sberbank.ru/api/v1/chat/completions",
   },
   models: [
     { id: "GigaChat-2-Max", name: "GigaChat-2-Max" },

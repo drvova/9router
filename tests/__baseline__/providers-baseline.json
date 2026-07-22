@@ -1470,7 +1470,7 @@
     "format": "openai"
   },
   "gigachat": {
-    "baseUrl": "https://gigachat.devices.sberbank.ru/api/v1",
+    "baseUrl": "https://gigachat.devices.sberbank.ru/api/v1/chat/completions",
     "format": "openai"
   },
   "github-models": {
@@ -1483,7 +1483,7 @@
     "format": "openai"
   },
   "gitlawb": {
-    "baseUrl": "https://opengateway.gitlawb.com/v1/xiaomi-mimo",
+    "baseUrl": "https://opengateway.gitlawb.com/v1/xiaomi-mimo/chat/completions",
     "headers": {
       "User-Agent": "OpenClaude/1.0 (linux; x86_64)",
       "X-Title": "OpenClaude CLI",
@@ -1492,7 +1492,7 @@
     "format": "openai"
   },
   "gitlawb-gmi": {
-    "baseUrl": "https://opengateway.gitlawb.com/v1/gmi-cloud",
+    "baseUrl": "https://opengateway.gitlawb.com/v1/gmi-cloud/chat/completions",
     "headers": {
       "User-Agent": "OpenClaude/1.0 (linux; x86_64)",
       "X-Title": "OpenClaude CLI",
@@ -1910,7 +1910,7 @@
     "format": "openai"
   },
   "orcarouter": {
-    "baseUrl": "https://api.orcarouter.ai/v1",
+    "baseUrl": "https://api.orcarouter.ai/v1/chat/completions",
     "headers": {
       "HTTP-Referer": "https://endpoint-proxy.local",
       "X-Title": "Endpoint Proxy"
@@ -1919,7 +1919,7 @@
     "transports": [
       {
         "format": "openai",
-        "baseUrl": "https://api.orcarouter.ai/v1",
+        "baseUrl": "https://api.orcarouter.ai/v1/chat/completions",
         "auth": {
           "combined": true,
           "header": "Authorization",
