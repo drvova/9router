@@ -1,3 +1,5 @@
+import { CLAUDE_API_HEADERS } from "../shared.js";
+
 export default {
   id: "iflow",
   hidden: true,
@@ -20,6 +22,22 @@ export default {
       "User-Agent": "iFlow-Cli",
     },
   },
+  // Multi-endpoint: pick the transport matching client sourceFormat to skip translation.
+  // Anthropic endpoint verified live 2026-07-22 (auth-error + ctrl-404 probe).
+  transports: [
+    {
+      format: "openai",
+      baseUrl: "https://apis.iflow.cn/v1/chat/completions",
+      headers: { "User-Agent": "iFlow-Cli" },
+      auth: { combined: true, header: "Authorization", scheme: "bearer" },
+    },
+    {
+      format: "claude",
+      baseUrl: "https://apis.iflow.cn/v1/messages",
+      headers: { "User-Agent": "iFlow-Cli", ...CLAUDE_API_HEADERS },
+      auth: { combined: true, header: "Authorization", scheme: "bearer" },
+    },
+  ],
   models: [
     { id: "qwen3-coder-plus", name: "Qwen3 Coder Plus" },
     { id: "qwen3-max", name: "Qwen3 Max" },

@@ -1,3 +1,5 @@
+import { CLAUDE_API_HEADERS } from "../shared.js";
+
 export default {
   id: "synthetic",
   display: {
@@ -12,6 +14,21 @@ export default {
     baseUrl: "https://api.synthetic.new/openai/v1/chat/completions",
     validateUrl: "https://api.synthetic.new/openai/v1/models",
   },
+  // Multi-endpoint: pick the transport matching client sourceFormat to skip translation.
+  // Anthropic endpoint verified live 2026-07-22 (auth-error + ctrl-404 probe).
+  transports: [
+    {
+      format: "openai",
+      baseUrl: "https://api.synthetic.new/openai/v1/chat/completions",
+      auth: { combined: true, header: "Authorization", scheme: "bearer" },
+    },
+    {
+      format: "claude",
+      baseUrl: "https://api.synthetic.new/anthropic/v1/messages",
+      headers: { ...CLAUDE_API_HEADERS },
+      auth: { combined: true, header: "x-api-key", scheme: "raw" },
+    },
+  ],
   models: [
     { id: "hf:openai/gpt-oss-120b", name: "openai/gpt-oss-120b" },
     { id: "hf:zai-org/GLM-5.2", name: "zai-org/GLM-5.2" },

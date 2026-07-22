@@ -1,3 +1,5 @@
+import { CLAUDE_API_HEADERS } from "../shared.js";
+
 export default {
   id: "xai",
   priority: 280,
@@ -26,6 +28,21 @@ export default {
     tokenUrl: "https://auth.x.ai/oauth2/token",
     refreshUrl: "https://auth.x.ai/oauth2/token",
   },
+  // Multi-endpoint: pick the transport matching client sourceFormat to skip translation.
+  // Anthropic endpoint verified live 2026-07-22 (auth-error + ctrl-404 probe).
+  transports: [
+    {
+      format: "openai",
+      baseUrl: "https://api.x.ai/v1/chat/completions",
+      auth: { combined: true, header: "Authorization", scheme: "bearer" },
+    },
+    {
+      format: "claude",
+      baseUrl: "https://api.x.ai/v1/messages",
+      headers: { ...CLAUDE_API_HEADERS },
+      auth: { combined: true, header: "Authorization", scheme: "bearer" },
+    },
+  ],
   models: [
     { id: "grok-4", name: "Grok 4" },
     { id: "grok-4-fast-reasoning", name: "Grok 4 Fast Reasoning" },
