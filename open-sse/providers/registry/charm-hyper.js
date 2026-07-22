@@ -12,6 +12,7 @@ export default {
   category: "apikey",
   transport: {
     baseUrl: "https://hyper.charm.land/v1/chat/completions",
+    validateUrl: "https://hyper.charm.land/v1/models",
   },
   models: [
     { id: "hyper/auto", name: "Charm Hyper Auto" },

@@ -13,7 +13,7 @@ export default {
   category: "apikey",
   transport: {
     baseUrl: "https://api.pioneer.ai/v1/chat/completions",
-    auth: { header: "x-api-key", scheme: "raw" },
+    auth: { combined: true, header: "x-api-key", scheme: "raw" },
   },
   models: [
     { id: "Qwen/Qwen3-32B", name: "Qwen3 32B" },

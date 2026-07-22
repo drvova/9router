@@ -889,6 +889,7 @@
       "Anthropic-Beta": "claude-code-20250219,interleaved-thinking-2025-05-14"
     },
     "auth": {
+      "combined": true,
       "header": "x-api-key",
       "scheme": "raw"
     }
@@ -903,10 +904,16 @@
   },
   "api-airforce": {
     "baseUrl": "https://api.airforce/v1/chat/completions",
+    "validateUrl": "https://api.airforce/v1/models",
+    "headers": {
+      "HTTP-Referer": "https://endpoint-proxy.local",
+      "X-Title": "Endpoint Proxy"
+    },
     "format": "openai"
   },
   "bai": {
     "baseUrl": "https://api.b.ai/v1/chat/completions",
+    "validateUrl": "https://api.b.ai/v1/models",
     "format": "openai"
   },
   "baichuan": {
@@ -919,10 +926,12 @@
   },
   "bazaarlink": {
     "baseUrl": "https://bazaarlink.ai/api/v1/chat/completions",
+    "validateUrl": "https://bazaarlink.ai/api/v1/models",
     "format": "openai"
   },
   "bluesminds": {
     "baseUrl": "https://api.bluesminds.com/v1/chat/completions",
+    "validateUrl": "https://api.bluesminds.com/v1/models",
     "format": "openai"
   },
   "bytez": {
@@ -931,6 +940,7 @@
   },
   "charm-hyper": {
     "baseUrl": "https://hyper.charm.land/v1/chat/completions",
+    "validateUrl": "https://hyper.charm.land/v1/models",
     "format": "openai"
   },
   "codestral": {
@@ -955,6 +965,7 @@
   },
   "dgrid": {
     "baseUrl": "https://api.dgrid.ai/v1/chat/completions",
+    "validateUrl": "https://api.dgrid.ai/v1/models",
     "format": "openai"
   },
   "dify": {
@@ -963,10 +974,12 @@
   },
   "digitalocean": {
     "baseUrl": "https://inference.do-ai.run/v1/chat/completions",
+    "validateUrl": "https://inference.do-ai.run/v1/models",
     "format": "openai"
   },
   "dit": {
     "baseUrl": "https://api.dit.ai/v1/chat/completions",
+    "validateUrl": "https://api.dit.ai/v1/models",
     "format": "openai"
   },
   "doubao": {
@@ -979,14 +992,17 @@
   },
   "freeaiapikey": {
     "baseUrl": "https://freeaiapikey.com/v1/chat/completions",
+    "validateUrl": "https://freeaiapikey.com/v1/models",
     "format": "openai"
   },
   "freemodel-dev": {
     "baseUrl": "https://api.freemodel.dev/v1/chat/completions",
+    "validateUrl": "https://api.freemodel.dev/v1/models",
     "format": "openai"
   },
   "friendliai": {
     "baseUrl": "https://api.friendli.ai/serverless/v1/chat/completions",
+    "validateUrl": "https://api.friendli.ai/serverless/v1/models",
     "format": "openai"
   },
   "galadriel": {
@@ -999,26 +1015,39 @@
   },
   "github-models": {
     "baseUrl": "https://models.github.ai/inference/chat/completions",
-    "auth": {
-      "header": "Authorization",
-      "scheme": "raw"
+    "validateUrl": "https://models.github.ai/inference/models",
+    "headers": {
+      "X-GitHub-Api-Version": "2022-11-28",
+      "Accept": "application/vnd.github+json"
     },
     "format": "openai"
   },
   "gitlawb": {
     "baseUrl": "https://opengateway.gitlawb.com/v1/xiaomi-mimo",
+    "headers": {
+      "User-Agent": "OpenClaude/1.0 (linux; x86_64)",
+      "X-Title": "OpenClaude CLI",
+      "HTTP-Referer": "https://github.com/Gitlawb/openclaude"
+    },
     "format": "openai"
   },
   "gitlawb-gmi": {
     "baseUrl": "https://opengateway.gitlawb.com/v1/gmi-cloud",
+    "headers": {
+      "User-Agent": "OpenClaude/1.0 (linux; x86_64)",
+      "X-Title": "OpenClaude CLI",
+      "HTTP-Referer": "https://github.com/Gitlawb/openclaude"
+    },
     "format": "openai"
   },
   "hackclub": {
     "baseUrl": "https://ai.hackclub.com/proxy/v1/chat/completions",
+    "validateUrl": "https://ai.hackclub.com/proxy/v1/models",
     "format": "openai"
   },
   "hcnsec": {
     "baseUrl": "https://api.hcnsec.cn/v1/chat/completions",
+    "validateUrl": "https://api.hcnsec.cn/v1/models",
     "format": "openai"
   },
   "heroku": {
@@ -1035,6 +1064,7 @@
   },
   "kenari": {
     "baseUrl": "https://kenari.id/v1/chat/completions",
+    "validateUrl": "https://kenari.id/v1/models",
     "format": "openai"
   },
   "kie": {
@@ -1043,6 +1073,7 @@
   },
   "kilo-gateway": {
     "baseUrl": "https://api.kilo.ai/api/gateway/chat/completions",
+    "validateUrl": "https://api.kilo.ai/api/gateway/models",
     "format": "openai"
   },
   "lambda-ai": {
@@ -1059,22 +1090,15 @@
   },
   "llm7": {
     "baseUrl": "https://api.llm7.io/v1/chat/completions",
+    "validateUrl": "https://api.llm7.io/v1/models",
     "format": "openai"
   },
   "longcat": {
     "baseUrl": "https://api.longcat.chat/openai/v1/chat/completions",
-    "auth": {
-      "header": "Authorization",
-      "scheme": "raw"
-    },
     "format": "openai"
   },
   "maritalk": {
     "baseUrl": "https://chat.maritaca.ai/api/chat/completions",
-    "auth": {
-      "header": "key",
-      "scheme": "raw"
-    },
     "format": "openai"
   },
   "meta-llama": {
@@ -1087,6 +1111,7 @@
   },
   "modelscope": {
     "baseUrl": "https://api-inference.modelscope.cn/v1/chat/completions",
+    "validateUrl": "https://api-inference.modelscope.cn/v1/models",
     "format": "openai"
   },
   "monsterapi": {
@@ -1115,6 +1140,7 @@
   },
   "novita": {
     "baseUrl": "https://api.novita.ai/openai/v1/chat/completions",
+    "validateUrl": "https://api.novita.ai/openai/v1/models",
     "format": "openai"
   },
   "nscale": {
@@ -1123,10 +1149,12 @@
   },
   "nube": {
     "baseUrl": "https://ai.nube.sh/api/v1/chat/completions",
+    "validateUrl": "https://ai.nube.sh/api/v1/models",
     "format": "openai"
   },
   "openadapter": {
     "baseUrl": "https://api.openadapter.in/v1/chat/completions",
+    "validateUrl": "https://api.openadapter.in/v1/models",
     "format": "openai"
   },
   "openvecta": {
@@ -1135,6 +1163,10 @@
   },
   "orcarouter": {
     "baseUrl": "https://api.orcarouter.ai/v1",
+    "headers": {
+      "HTTP-Referer": "https://endpoint-proxy.local",
+      "X-Title": "Endpoint Proxy"
+    },
     "format": "openai"
   },
   "ovhcloud": {
@@ -1144,6 +1176,7 @@
   "pioneer": {
     "baseUrl": "https://api.pioneer.ai/v1/chat/completions",
     "auth": {
+      "combined": true,
       "header": "x-api-key",
       "scheme": "raw"
     },
@@ -1159,10 +1192,12 @@
   },
   "qianfan": {
     "baseUrl": "https://qianfan.baidubce.com/v2/chat/completions",
+    "validateUrl": "https://qianfan.baidubce.com/v2/models",
     "format": "openai"
   },
   "qiniu": {
     "baseUrl": "https://api.qnaigc.com/v1/chat/completions",
+    "validateUrl": "https://api.qnaigc.com/v1/models",
     "format": "openai"
   },
   "reka": {
@@ -1171,6 +1206,7 @@
   },
   "requesty": {
     "baseUrl": "https://router.requesty.ai/v1/chat/completions",
+    "validateUrl": "https://router.requesty.ai/v1/models",
     "format": "openai"
   },
   "sambanova": {
@@ -1195,10 +1231,12 @@
   },
   "sumopod": {
     "baseUrl": "https://ai.sumopod.com/v1/chat/completions",
+    "validateUrl": "https://ai.sumopod.com/v1/models",
     "format": "openai"
   },
   "synthetic": {
     "baseUrl": "https://api.synthetic.new/openai/v1/chat/completions",
+    "validateUrl": "https://api.synthetic.new/openai/v1/models",
     "format": "openai"
   },
   "tencent": {
@@ -1207,6 +1245,7 @@
   },
   "tokenrouter": {
     "baseUrl": "https://api.tokenrouter.com/v1/chat/completions",
+    "validateUrl": "https://api.tokenrouter.com/v1/models",
     "format": "openai"
   },
   "uncloseai": {
@@ -1235,6 +1274,7 @@
   },
   "x5lab": {
     "baseUrl": "https://api.x5lab.dev/v1/chat/completions",
+    "validateUrl": "https://api.x5lab.dev/v1/models",
     "format": "openai"
   },
   "yi": {
@@ -1243,6 +1283,7 @@
   },
   "zenmux": {
     "baseUrl": "https://zenmux.ai/api/v1/chat/completions",
+    "validateUrl": "https://zenmux.ai/api/v1/models",
     "format": "openai"
   }
 }

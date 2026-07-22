@@ -10,6 +10,7 @@ export default {
   category: "apikey",
   transport: {
     baseUrl: "https://qianfan.baidubce.com/v2/chat/completions",
+    validateUrl: "https://qianfan.baidubce.com/v2/models",
   },
   models: [
     { id: "ernie-5.1", name: "ERNIE 5.1" },

@@ -13,6 +13,7 @@ export default {
   category: "apikey",
   transport: {
     baseUrl: "https://api.openadapter.in/v1/chat/completions",
+    validateUrl: "https://api.openadapter.in/v1/models",
   },
   models: [
     { id: "glm-4.7", name: "GLM 4.7 (OpenAdapter)" },

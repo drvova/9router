@@ -11,6 +11,7 @@ export default {
   category: "apikey",
   transport: {
     baseUrl: "https://api.kilo.ai/api/gateway/chat/completions",
+    validateUrl: "https://api.kilo.ai/api/gateway/models",
   },
   models: [
     { id: "kilo-auto/frontier", name: "Kilo Auto Frontier" },

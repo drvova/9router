@@ -16,7 +16,7 @@ export default {
     baseUrl: "https://agentrouter.org/v1/messages",
     format: "claude",
     headers: { ...CLAUDE_API_HEADERS },
-    auth: { header: "x-api-key", scheme: "raw" },
+    auth: { combined: true, header: "x-api-key", scheme: "raw" },
   },
   models: [
     { id: "claude-opus-4-6", name: "Claude 4.6 Opus" },

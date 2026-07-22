@@ -10,6 +10,7 @@ export default {
   category: "apikey",
   transport: {
     baseUrl: "https://api.synthetic.new/openai/v1/chat/completions",
+    validateUrl: "https://api.synthetic.new/openai/v1/models",
   },
   models: [
     { id: "hf:openai/gpt-oss-120b", name: "openai/gpt-oss-120b" },

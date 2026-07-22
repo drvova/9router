@@ -10,6 +10,7 @@ export default {
   category: "apikey",
   transport: {
     baseUrl: "https://kenari.id/v1/chat/completions",
+    validateUrl: "https://kenari.id/v1/models",
   },
   models: [
   ],

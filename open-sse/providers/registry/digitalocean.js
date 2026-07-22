@@ -10,6 +10,7 @@ export default {
   category: "apikey",
   transport: {
     baseUrl: "https://inference.do-ai.run/v1/chat/completions",
+    validateUrl: "https://inference.do-ai.run/v1/models",
   },
   models: [
   ],

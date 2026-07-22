@@ -12,6 +12,7 @@ export default {
   category: "apikey",
   transport: {
     baseUrl: "https://router.requesty.ai/v1/chat/completions",
+    validateUrl: "https://router.requesty.ai/v1/models",
   },
   models: [
   ],

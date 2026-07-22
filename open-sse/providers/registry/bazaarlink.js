@@ -13,6 +13,7 @@ export default {
   category: "apikey",
   transport: {
     baseUrl: "https://bazaarlink.ai/api/v1/chat/completions",
+    validateUrl: "https://bazaarlink.ai/api/v1/models",
   },
   models: [
     { id: "auto:free", name: "Auto Free (Zero Cost)" },

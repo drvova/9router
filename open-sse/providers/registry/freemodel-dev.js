@@ -13,6 +13,7 @@ export default {
   category: "freeTier",
   transport: {
     baseUrl: "https://api.freemodel.dev/v1/chat/completions",
+    validateUrl: "https://api.freemodel.dev/v1/models",
   },
   models: [
     { id: "gpt-5.5", name: "GPT-5.5" },

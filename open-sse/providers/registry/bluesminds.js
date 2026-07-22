@@ -13,6 +13,7 @@ export default {
   category: "apikey",
   transport: {
     baseUrl: "https://api.bluesminds.com/v1/chat/completions",
+    validateUrl: "https://api.bluesminds.com/v1/models",
   },
   models: [
     { id: "gpt-4o", name: "GPT-4o" },

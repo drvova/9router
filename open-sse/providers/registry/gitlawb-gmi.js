@@ -12,6 +12,7 @@ export default {
   category: "apikey",
   transport: {
     baseUrl: "https://opengateway.gitlawb.com/v1/gmi-cloud",
+    headers: { "User-Agent": "OpenClaude/1.0 (linux; x86_64)", "X-Title": "OpenClaude CLI", "HTTP-Referer": "https://github.com/Gitlawb/openclaude" },
   },
   models: [
     { id: "XiaomiMiMo/MiMo-V2.5-Pro", name: "MiMo-V2.5-Pro (GMI)" },

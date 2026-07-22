@@ -12,6 +12,7 @@ export default {
   category: "apikey",
   transport: {
     baseUrl: "https://api.novita.ai/openai/v1/chat/completions",
+    validateUrl: "https://api.novita.ai/openai/v1/models",
   },
   models: [
     { id: "meta-llama/llama-3.1-8b-instruct", name: "Llama 3.1 8B Instruct" },

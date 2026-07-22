@@ -10,6 +10,7 @@ export default {
   category: "apikey",
   transport: {
     baseUrl: "https://api.orcarouter.ai/v1",
+    headers: { "HTTP-Referer": "https://endpoint-proxy.local", "X-Title": "Endpoint Proxy" },
   },
   models: [
     { id: "orcarouter/auto", name: "Auto (smart routing)" },

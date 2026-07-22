@@ -12,6 +12,7 @@ export default {
   category: "freeTier",
   transport: {
     baseUrl: "https://freeaiapikey.com/v1/chat/completions",
+    validateUrl: "https://freeaiapikey.com/v1/models",
   },
   models: [
     { id: "openai/gpt-5", name: "GPT-5 (via FreeAIAPIKey)" },

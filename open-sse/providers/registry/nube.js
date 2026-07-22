@@ -10,6 +10,7 @@ export default {
   category: "apikey",
   transport: {
     baseUrl: "https://ai.nube.sh/api/v1/chat/completions",
+    validateUrl: "https://ai.nube.sh/api/v1/models",
   },
   models: [
   ],

@@ -10,7 +10,6 @@ export default {
   category: "apikey",
   transport: {
     baseUrl: "https://chat.maritaca.ai/api/chat/completions",
-    auth: { header: "key", scheme: "raw" },
   },
   models: [
     { id: "sabia-4", name: "sabia-4" },

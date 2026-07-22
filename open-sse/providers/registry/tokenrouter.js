@@ -13,6 +13,7 @@ export default {
   category: "apikey",
   transport: {
     baseUrl: "https://api.tokenrouter.com/v1/chat/completions",
+    validateUrl: "https://api.tokenrouter.com/v1/models",
   },
   models: [
     { id: "minimax-3", name: "MiniMax 3 (free, TokenRouter)" },

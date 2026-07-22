@@ -13,6 +13,8 @@ export default {
   category: "apikey",
   transport: {
     baseUrl: "https://api.airforce/v1/chat/completions",
+    validateUrl: "https://api.airforce/v1/models",
+    headers: { "HTTP-Referer": "https://endpoint-proxy.local", "X-Title": "Endpoint Proxy" },
   },
   models: [
     { id: "x-ai/grok-3", name: "Grok-3 (Free)" },

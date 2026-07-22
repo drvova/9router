@@ -13,6 +13,7 @@ export default {
   category: "apikey",
   transport: {
     baseUrl: "https://api.friendli.ai/serverless/v1/chat/completions",
+    validateUrl: "https://api.friendli.ai/serverless/v1/models",
   },
   models: [
     { id: "meta-llama-3.1-70b-instruct", name: "meta-llama-3.1-70b-instruct" },

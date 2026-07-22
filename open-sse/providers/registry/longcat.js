@@ -13,7 +13,6 @@ export default {
   category: "apikey",
   transport: {
     baseUrl: "https://api.longcat.chat/openai/v1/chat/completions",
-    auth: { header: "Authorization", scheme: "raw" },
   },
   models: [
     { id: "LongCat-2.0", name: "LongCat 2.0 (10M tok free 🆓)" },

@@ -13,6 +13,7 @@ export default {
   category: "apikey",
   transport: {
     baseUrl: "https://zenmux.ai/api/v1/chat/completions",
+    validateUrl: "https://zenmux.ai/api/v1/models",
   },
   models: [
     { id: "google/gemini-3.1-pro-preview", name: "Gemini 3.1 Pro Preview (ZenMux)" },

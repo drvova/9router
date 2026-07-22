@@ -10,6 +10,7 @@ export default {
   category: "apikey",
   transport: {
     baseUrl: "https://api.qnaigc.com/v1/chat/completions",
+    validateUrl: "https://api.qnaigc.com/v1/models",
   },
   models: [
   ],
