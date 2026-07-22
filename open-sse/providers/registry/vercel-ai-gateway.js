@@ -1,3 +1,5 @@
+import { CLAUDE_API_HEADERS } from "../shared.js";
+
 export default {
   id: "vercel-ai-gateway",
   priority: 160,
@@ -28,6 +30,21 @@ export default {
       url: "https://ai-gateway.vercel.sh/v1/credits",
     },
   },
+  // Multi-endpoint: pick the transport matching client sourceFormat to skip translation.
+  // Anthropic endpoint verified live 2026-07-22 (auth-error + ctrl-404 probe).
+  transports: [
+    {
+      format: "openai",
+      baseUrl: "https://ai-gateway.vercel.sh/v1/chat/completions",
+      auth: { combined: true, header: "Authorization", scheme: "bearer" },
+    },
+    {
+      format: "claude",
+      baseUrl: "https://ai-gateway.vercel.sh/v1/messages",
+      headers: { ...CLAUDE_API_HEADERS },
+      auth: { combined: true, header: "Authorization", scheme: "bearer" },
+    },
+  ],
   serviceKinds: ["llm","embedding","image","imageToText","webSearch"],
   embeddingConfig: { baseUrl: "https://ai-gateway.vercel.sh/v1/embeddings" },
   imageConfig: { baseUrl: "https://ai-gateway.vercel.sh/v1/images/generations" },

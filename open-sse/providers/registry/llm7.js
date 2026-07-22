@@ -1,3 +1,5 @@
+import { CLAUDE_API_HEADERS } from "../shared.js";
+
 export default {
   id: "llm7",
   hasFree: true,
@@ -14,6 +16,21 @@ export default {
     baseUrl: "https://api.llm7.io/v1/chat/completions",
     validateUrl: "https://api.llm7.io/v1/models",
   },
+  // Multi-endpoint: pick the transport matching client sourceFormat to skip translation.
+  // Anthropic endpoint verified live 2026-07-22 (auth-error + ctrl-404 probe).
+  transports: [
+    {
+      format: "openai",
+      baseUrl: "https://api.llm7.io/v1/chat/completions",
+      auth: { combined: true, header: "Authorization", scheme: "bearer" },
+    },
+    {
+      format: "claude",
+      baseUrl: "https://api.llm7.io/v1/messages",
+      headers: { ...CLAUDE_API_HEADERS },
+      auth: { combined: true, header: "Authorization", scheme: "bearer" },
+    },
+  ],
   models: [
     { id: "gpt-4o-mini-2024-07-18", name: "GPT-4o mini (LLM7)" },
     { id: "gpt-4.1-nano-2025-04-14", name: "GPT-4.1 nano (LLM7)" },

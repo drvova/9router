@@ -1,3 +1,5 @@
+import { CLAUDE_API_HEADERS } from "../shared.js";
+
 export default {
   id: "heroku",
   display: {
@@ -11,6 +13,21 @@ export default {
   transport: {
     baseUrl: "https://us.inference.heroku.com/v1/chat/completions",
   },
+  // Multi-endpoint: pick the transport matching client sourceFormat to skip translation.
+  // Anthropic endpoint verified live 2026-07-22 (auth-error + ctrl-404 probe).
+  transports: [
+    {
+      format: "openai",
+      baseUrl: "https://us.inference.heroku.com/v1/chat/completions",
+      auth: { combined: true, header: "Authorization", scheme: "bearer" },
+    },
+    {
+      format: "claude",
+      baseUrl: "https://us.inference.heroku.com/v1/messages",
+      headers: { ...CLAUDE_API_HEADERS },
+      auth: { combined: true, header: "x-api-key", scheme: "raw" },
+    },
+  ],
   models: [
     { id: "claude-opus-4-7", name: "claude-opus-4-7" },
     { id: "claude-4-6-sonnet", name: "claude-4-6-sonnet" },

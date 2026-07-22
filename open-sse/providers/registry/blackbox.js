@@ -1,3 +1,5 @@
+import { CLAUDE_API_HEADERS } from "../shared.js";
+
 export default {
   id: "blackbox",
   priority: 50,
@@ -26,6 +28,21 @@ export default {
     baseUrl: "https://api.blackbox.ai/v1/chat/completions",
     thinkingFormat: "openai",
   },
+  // Multi-endpoint: pick the transport matching client sourceFormat to skip translation.
+  // Anthropic endpoint verified live 2026-07-22 (auth-error + ctrl-404 probe).
+  transports: [
+    {
+      format: "openai",
+      baseUrl: "https://api.blackbox.ai/v1/chat/completions",
+      auth: { combined: true, header: "Authorization", scheme: "bearer" },
+    },
+    {
+      format: "claude",
+      baseUrl: "https://api.blackbox.ai/v1/messages",
+      headers: { ...CLAUDE_API_HEADERS },
+      auth: { combined: true, header: "Authorization", scheme: "bearer" },
+    },
+  ],
   models: [
     { id: "claude-fable-5",    name: "Claude Fable 5",    upstreamModelId: "blackboxai/anthropic/claude-fable-5" },
     { id: "claude-opus-4.8",   name: "Claude Opus 4.8",  upstreamModelId: "blackboxai/anthropic/claude-opus-4.8" },

@@ -1,3 +1,5 @@
+import { CLAUDE_API_HEADERS } from "../shared.js";
+
 export default {
   id: "pioneer",
   alias: "pn",
@@ -15,6 +17,21 @@ export default {
     baseUrl: "https://api.pioneer.ai/v1/chat/completions",
     auth: { combined: true, header: "x-api-key", scheme: "raw" },
   },
+  // Multi-endpoint: pick the transport matching client sourceFormat to skip translation.
+  // Anthropic endpoint verified live 2026-07-22 (auth-error + ctrl-404 probe).
+  transports: [
+    {
+      format: "openai",
+      baseUrl: "https://api.pioneer.ai/v1/chat/completions",
+      auth: { combined: true, header: "x-api-key", scheme: "raw" },
+    },
+    {
+      format: "claude",
+      baseUrl: "https://api.pioneer.ai/v1/messages",
+      headers: { ...CLAUDE_API_HEADERS },
+      auth: { combined: true, header: "x-api-key", scheme: "raw" },
+    },
+  ],
   models: [
     { id: "Qwen/Qwen3-32B", name: "Qwen3 32B" },
     { id: "Qwen/Qwen3.6-27B", name: "Qwen3.6 27B" },

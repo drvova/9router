@@ -1,3 +1,5 @@
+import { CLAUDE_API_HEADERS } from "../shared.js";
+
 export default {
   id: "bazaarlink",
   alias: "bzl",
@@ -15,6 +17,21 @@ export default {
     baseUrl: "https://bazaarlink.ai/api/v1/chat/completions",
     validateUrl: "https://bazaarlink.ai/api/v1/models",
   },
+  // Multi-endpoint: pick the transport matching client sourceFormat to skip translation.
+  // Anthropic endpoint verified live 2026-07-22 (auth-error + ctrl-404 probe).
+  transports: [
+    {
+      format: "openai",
+      baseUrl: "https://bazaarlink.ai/api/v1/chat/completions",
+      auth: { combined: true, header: "Authorization", scheme: "bearer" },
+    },
+    {
+      format: "claude",
+      baseUrl: "https://bazaarlink.ai/api/v1/messages",
+      headers: { ...CLAUDE_API_HEADERS },
+      auth: { combined: true, header: "Authorization", scheme: "bearer" },
+    },
+  ],
   models: [
     { id: "auto:free", name: "Auto Free (Zero Cost)" },
     { id: "claude-opus-4.7", name: "Claude Opus 4.7" },
