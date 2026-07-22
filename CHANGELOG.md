@@ -1,3 +1,8 @@
+# Unreleased
+
+## Features
+- **Providers**: add 84 OpenAI-compatible providers ported from the OmniRoute registry — cloud/enterprise inference (Bedrock-adjacent hosts: DeepInfra, Novita, SambaNova, Lambda, Baseten, Databricks, Snowflake, Heroku, DigitalOcean, OVHcloud, Scaleway, Modal, Predibase, W&B …), first-party model vendors (AI21, Reka, Upstage, StepFun, 01.AI Yi, Meta Llama API, Nous Research, Liquid AI, Moonshot platform, Codestral, Morph, GigaChat, MariTalk), Chinese ecosystem (Qianfan/ERNIE, Tencent Hunyuan, Baichuan, SenseNova, iFlytek Spark, Doubao, LongCat, Qiniu, ModelScope, Coze, Dify), aggregators (AIMLAPI, Requesty, ZenMux, AgentRouter, OrcaRouter, TokenRouter, Kilo Gateway …), coding-tool endpoints (Factory, v0, GitHub Models), and free pools (Hackclub, Pollinations-class pools, LLM7, PublicAI …)
+
 # v0.5.40 (2026-07-20)
 
 ## Features

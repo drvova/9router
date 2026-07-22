@@ -1,0 +1,20 @@
+export default {
+  id: "charm-hyper",
+  hasFree: true,
+  display: {
+    name: "Charm Hyper",
+    icon: "router",
+    color: "#7C3AED",
+    textIcon: "CH",
+    website: "https://hyper.charm.land",
+    notice: { text: "100 free monthly Hypercredits on signup" },
+  },
+  category: "apikey",
+  transport: {
+    baseUrl: "https://hyper.charm.land/v1/chat/completions",
+  },
+  models: [
+    { id: "hyper/auto", name: "Charm Hyper Auto" },
+  ],
+  passthroughModels: true,
+};

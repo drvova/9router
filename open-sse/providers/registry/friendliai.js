@@ -1,0 +1,21 @@
+export default {
+  id: "friendliai",
+  alias: "friendli",
+  hasFree: true,
+  display: {
+    name: "FriendliAI",
+    icon: "handshake",
+    color: "#EC4899",
+    textIcon: "FR",
+    website: "https://friendli.ai",
+    notice: { text: "Free tier for serverless inference — no credit card required" },
+  },
+  category: "apikey",
+  transport: {
+    baseUrl: "https://api.friendli.ai/serverless/v1/chat/completions",
+  },
+  models: [
+    { id: "meta-llama-3.1-70b-instruct", name: "meta-llama-3.1-70b-instruct" },
+    { id: "meta-llama-3.1-8b-instruct", name: "meta-llama-3.1-8b-instruct" },
+  ],
+};
