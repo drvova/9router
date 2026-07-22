@@ -1,3 +1,5 @@
+import { CLAUDE_API_HEADERS } from "../shared.js";
+
 export default {
   id: "alicode-intl",
   priority: 10,
@@ -18,6 +20,21 @@ export default {
     headers: {},
     quirks: { preserveCacheControl: true },
   },
+  // Multi-endpoint: pick the transport matching client sourceFormat to skip translation.
+  // Anthropic endpoint verified live 2026-07-22 (auth-error + ctrl-404 / header-read probe).
+  transports: [
+    {
+      format: "openai",
+      baseUrl: "https://coding-intl.dashscope.aliyuncs.com/v1/chat/completions",
+      auth: { combined: true, header: "Authorization", scheme: "bearer" },
+    },
+    {
+      format: "claude",
+      baseUrl: "https://dashscope-intl.aliyuncs.com/api/v2/apps/claude-code-proxy/v1/messages",
+      headers: { ...CLAUDE_API_HEADERS },
+      auth: { combined: true, header: "Authorization", scheme: "bearer" },
+    },
+  ],
   models: [
     { id: "qwen3.5-plus", name: "Qwen3.5 Plus" },
     { id: "kimi-k2.5", name: "Kimi K2.5" },

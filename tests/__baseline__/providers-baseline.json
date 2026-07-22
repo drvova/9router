@@ -5,7 +5,31 @@
     "quirks": {
       "preserveCacheControl": true
     },
-    "format": "openai"
+    "format": "openai",
+    "transports": [
+      {
+        "format": "openai",
+        "baseUrl": "https://coding-intl.dashscope.aliyuncs.com/v1/chat/completions",
+        "auth": {
+          "combined": true,
+          "header": "Authorization",
+          "scheme": "bearer"
+        }
+      },
+      {
+        "format": "claude",
+        "baseUrl": "https://dashscope-intl.aliyuncs.com/api/v2/apps/claude-code-proxy/v1/messages",
+        "headers": {
+          "Anthropic-Version": "2023-06-01",
+          "Anthropic-Beta": "claude-code-20250219,interleaved-thinking-2025-05-14"
+        },
+        "auth": {
+          "combined": true,
+          "header": "Authorization",
+          "scheme": "bearer"
+        }
+      }
+    ]
   },
   "alicode": {
     "baseUrl": "https://coding.dashscope.aliyuncs.com/v1/chat/completions",
@@ -13,7 +37,31 @@
     "quirks": {
       "preserveCacheControl": true
     },
-    "format": "openai"
+    "format": "openai",
+    "transports": [
+      {
+        "format": "openai",
+        "baseUrl": "https://coding.dashscope.aliyuncs.com/v1/chat/completions",
+        "auth": {
+          "combined": true,
+          "header": "Authorization",
+          "scheme": "bearer"
+        }
+      },
+      {
+        "format": "claude",
+        "baseUrl": "https://dashscope.aliyuncs.com/api/v2/apps/claude-code-proxy/v1/messages",
+        "headers": {
+          "Anthropic-Version": "2023-06-01",
+          "Anthropic-Beta": "claude-code-20250219,interleaved-thinking-2025-05-14"
+        },
+        "auth": {
+          "combined": true,
+          "header": "Authorization",
+          "scheme": "bearer"
+        }
+      }
+    ]
   },
   "anthropic": {
     "baseUrl": "https://api.anthropic.com/v1/messages",
@@ -1529,7 +1577,31 @@
   },
   "kie": {
     "baseUrl": "https://api.kie.ai/v1/chat/completions",
-    "format": "openai"
+    "format": "openai",
+    "transports": [
+      {
+        "format": "openai",
+        "baseUrl": "https://api.kie.ai/v1/chat/completions",
+        "auth": {
+          "combined": true,
+          "header": "Authorization",
+          "scheme": "bearer"
+        }
+      },
+      {
+        "format": "claude",
+        "baseUrl": "https://api.kie.ai/claude/v1/messages",
+        "headers": {
+          "Anthropic-Version": "2023-06-01",
+          "Anthropic-Beta": "claude-code-20250219,interleaved-thinking-2025-05-14"
+        },
+        "auth": {
+          "combined": true,
+          "header": "Authorization",
+          "scheme": "bearer"
+        }
+      }
+    ]
   },
   "kilo-gateway": {
     "baseUrl": "https://api.kilo.ai/api/gateway/chat/completions",
@@ -1843,7 +1915,31 @@
       "HTTP-Referer": "https://endpoint-proxy.local",
       "X-Title": "Endpoint Proxy"
     },
-    "format": "openai"
+    "format": "openai",
+    "transports": [
+      {
+        "format": "openai",
+        "baseUrl": "https://api.orcarouter.ai/v1",
+        "auth": {
+          "combined": true,
+          "header": "Authorization",
+          "scheme": "bearer"
+        }
+      },
+      {
+        "format": "claude",
+        "baseUrl": "https://api.orcarouter.ai/v1/messages",
+        "headers": {
+          "Anthropic-Version": "2023-06-01",
+          "Anthropic-Beta": "claude-code-20250219,interleaved-thinking-2025-05-14"
+        },
+        "auth": {
+          "combined": true,
+          "header": "x-api-key",
+          "scheme": "raw"
+        }
+      }
+    ]
   },
   "ovhcloud": {
     "baseUrl": "https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions",

@@ -1,3 +1,5 @@
+import { CLAUDE_API_HEADERS } from "../shared.js";
+
 export default {
   id: "orcarouter",
   display: {
@@ -12,6 +14,21 @@ export default {
     baseUrl: "https://api.orcarouter.ai/v1",
     headers: { "HTTP-Referer": "https://endpoint-proxy.local", "X-Title": "Endpoint Proxy" },
   },
+  // Multi-endpoint: pick the transport matching client sourceFormat to skip translation.
+  // Anthropic endpoint verified live 2026-07-22 (auth-error + ctrl-404 / header-read probe).
+  transports: [
+    {
+      format: "openai",
+      baseUrl: "https://api.orcarouter.ai/v1",
+      auth: { combined: true, header: "Authorization", scheme: "bearer" },
+    },
+    {
+      format: "claude",
+      baseUrl: "https://api.orcarouter.ai/v1/messages",
+      headers: { ...CLAUDE_API_HEADERS },
+      auth: { combined: true, header: "x-api-key", scheme: "raw" },
+    },
+  ],
   models: [
     { id: "orcarouter/auto", name: "Auto (smart routing)" },
     { id: "openai/gpt-5.5", name: "GPT-5.5" },
