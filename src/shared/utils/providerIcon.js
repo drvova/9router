@@ -8,6 +8,8 @@ const ICON_ALIASES = {
   "gitlab-duo": "gitlab",
   "vercel-ai-gateway": "vercel",
   "github-models": "github",
+  "v0-vercel": "vercel",
+  "codestral": "mistral",
 };
 
 // Runtime only — first 404 remembers id for the whole session
@@ -30,10 +32,11 @@ export function resolveProviderIconId(providerId) {
   return aliased;
 }
 
-/** `/providers/{id}.png` or null when previously failed. */
+/** `/providers/{file}` (svg or png) or null when absent / previously failed. */
 export function getProviderIconSrc(providerId) {
   const id = resolveProviderIconId(providerId);
-  return id ? `/providers/${id}.png` : null;
+  const file = id ? PROVIDER_ICON_FILES.get(id) : null;
+  return file ? `/providers/${file}` : null;
 }
 
 /** Call from img onError so later mounts skip the request. */
