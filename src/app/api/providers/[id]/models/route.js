@@ -81,14 +81,18 @@ const createOpenAIModelsConfig = (url) => ({
 
 // Registry-derived fallback: any openai-format provider gets live /v1/models sync from
 // its transport (single source of truth) without a hand-written PROVIDER_MODELS_CONFIG
-// entry. Prefers transport.validateUrl (the wired /v1/models URL); otherwise applies the
-// standard /chat/completions -> /models swap. Honors a non-bearer auth header (e.g.
-// x-api-key) declared on the transport. Returns null when no plausible URL exists.
+// entry. Prefers transport.validateUrl (the wired /v1/models URL); otherwise derives
+// the /models endpoint from common baseUrl patterns. Honors a non-bearer auth header
+// (e.g. x-api-key) declared on the transport. Returns null when no plausible URL exists.
 const deriveModelsUrl = (transport) => {
   if (transport.validateUrl) return transport.validateUrl;
   const base = transport.baseUrl;
   if (!base || !base.startsWith("http")) return null;
   if (base.includes("/chat/completions")) return base.replace("/chat/completions", "/models");
+  if (/\/chat\/?$/.test(base)) return base.replace(/\/chat\/?$/, "/models");
+  if (base.includes("/embeddings")) return base.replace("/embeddings", "/models");
+  if (/\/v\d+\/?$/.test(base)) return `${base.replace(/\/$/, "")}/models`;
+  if (base.endsWith("/models")) return base;
   return null;
 };
 
@@ -575,6 +579,15 @@ export async function GET(request, { params }) {
 
     const config = PROVIDER_MODELS_CONFIG[connection.provider] || buildRegistryModelsConfig(connection.provider);
     if (!config) {
+      const staticModels = getStaticProviderModels(connection.provider);
+      if (staticModels.length > 0) {
+        return NextResponse.json({
+          provider: connection.provider,
+          connectionId: connection.id,
+          models: staticModels,
+          warning: "Live model listing unavailable; using static catalog.",
+        });
+      }
       return NextResponse.json(
         { error: `Provider ${connection.provider} does not support models listing` },
         { status: 400 }
@@ -631,6 +644,15 @@ export async function GET(request, { params }) {
     if (!response.ok) {
       const errorText = await response.text();
       console.log(`Error fetching models from ${connection.provider}:`, errorText);
+      const staticModels = getStaticProviderModels(connection.provider);
+      if (staticModels.length > 0) {
+        return NextResponse.json({
+          provider: connection.provider,
+          connectionId: connection.id,
+          models: staticModels,
+          warning: `Live fetch failed (${response.status}); using static catalog.`,
+        });
+      }
       return NextResponse.json(
         { error: `Failed to fetch models: ${response.status}` },
         { status: response.status }
