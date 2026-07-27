@@ -11,6 +11,7 @@ import { resolveQoderModels } from "open-sse/services/qoderModels.js";
 import { resolveGrokCliModels } from "open-sse/services/grokCliModels.js";
 import { resolveConnectionProxyConfig } from "@/lib/network/connectionProxy";
 import { resolveCursorModels } from "open-sse/services/cursorModels.js";
+import { FILTERS as MODEL_FETCHER_FILTERS } from "@/app/api/providers/suggested-models/filters.js";
 
 const GEMINI_CLI_MODELS_URL = "https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels";
 
@@ -79,11 +80,10 @@ const createOpenAIModelsConfig = (url) => ({
   parseResponse: parseOpenAIStyleModels
 });
 
-// Registry-derived fallback: any openai-format provider gets live /v1/models sync from
-// its transport (single source of truth) without a hand-written PROVIDER_MODELS_CONFIG
-// entry. Prefers transport.validateUrl (the wired /v1/models URL); otherwise derives
-// the /models endpoint from common baseUrl patterns. Honors a non-bearer auth header
-// (e.g. x-api-key) declared on the transport. Returns null when no plausible URL exists.
+// Registry-derived model config: builds a live-fetch config from the provider's
+// transport (single source of truth) without a hand-written PROVIDER_MODELS_CONFIG entry.
+// URL resolution order: validateUrl → baseUrl pattern derivation → modelsFetcher.url.
+// Honors non-bearer auth headers (e.g. x-api-key) and noAuth providers.
 const deriveModelsUrl = (transport) => {
   if (transport.validateUrl) return transport.validateUrl;
   const base = transport.baseUrl;
@@ -96,12 +96,39 @@ const deriveModelsUrl = (transport) => {
   return null;
 };
 
+// Parse modelsFetcher responses. For custom types (openrouter-free, opencode-free,
+// mimo-free), apply the corresponding filter from suggested-models/filters.js.
+// For "openai" type or unknown, use the standard OpenAI-shaped parser.
+const buildFetcherParser = (fetcherType) => {
+  const filter = fetcherType ? MODEL_FETCHER_FILTERS[fetcherType] : null;
+  if (!filter) return parseOpenAIStyleModels;
+  return (data) => {
+    const raw = Array.isArray(data) ? data : (data?.data || data?.models || data?.results || []);
+    return filter(raw);
+  };
+};
+
 const buildRegistryModelsConfig = (providerId) => {
   const transport = PROVIDERS[providerId];
   if (!transport || (transport.format && transport.format !== "openai")) return null;
-  const url = deriveModelsUrl(transport);
+
+  let url = deriveModelsUrl(transport);
+  let fetcherType = null;
+
+  // Fall back to modelsFetcher URL when baseUrl derivation fails
+  if (!url && transport.modelsFetcher?.url) {
+    url = transport.modelsFetcher.url;
+    fetcherType = transport.modelsFetcher.type;
+  }
+
   if (!url) return null;
+
+  const parseResponse = buildFetcherParser(fetcherType);
   const auth = transport.auth;
+
+  if (transport.noAuth) {
+    return { url, method: "GET", headers: { "Content-Type": "application/json" }, noAuth: true, parseResponse };
+  }
   if (auth?.header && auth.header.toLowerCase() !== "authorization") {
     return {
       url,
@@ -109,10 +136,10 @@ const buildRegistryModelsConfig = (providerId) => {
       headers: { "Content-Type": "application/json" },
       authHeader: auth.header,
       authPrefix: auth.scheme === "bearer" ? "Bearer " : "",
-      parseResponse: parseOpenAIStyleModels,
+      parseResponse,
     };
   }
-  return createOpenAIModelsConfig(url);
+  return { ...createOpenAIModelsConfig(url), parseResponse };
 };
 
 const resolveQwenModelsUrl = (connection) => {
@@ -579,15 +606,6 @@ export async function GET(request, { params }) {
 
     const config = PROVIDER_MODELS_CONFIG[connection.provider] || buildRegistryModelsConfig(connection.provider);
     if (!config) {
-      const staticModels = getStaticProviderModels(connection.provider);
-      if (staticModels.length > 0) {
-        return NextResponse.json({
-          provider: connection.provider,
-          connectionId: connection.id,
-          models: staticModels,
-          warning: "Live model listing unavailable; using static catalog.",
-        });
-      }
       return NextResponse.json(
         { error: `Provider ${connection.provider} does not support models listing` },
         { status: 400 }
@@ -608,9 +626,9 @@ export async function GET(request, { params }) {
       });
     }
 
-    // Get auth token
-    const token = connection.providerSpecificData?.copilotToken || connection.accessToken || connection.apiKey;
-    if (!token) {
+    // Get auth token (noAuth configs like free providers skip auth)
+    const token = config.noAuth ? null : (connection.providerSpecificData?.apiKey || connection.accessToken || connection.apiKey);
+    if (!config.noAuth && !token) {
       return NextResponse.json({ error: "No valid token found" }, { status: 401 });
     }
 
@@ -625,7 +643,7 @@ export async function GET(request, { params }) {
 
     // Build headers
     const headers = { ...config.headers };
-    if (config.authHeader && !config.authQuery) {
+    if (token && config.authHeader && !config.authQuery) {
       headers[config.authHeader] = (config.authPrefix || "") + token;
     }
 
@@ -644,15 +662,10 @@ export async function GET(request, { params }) {
     if (!response.ok) {
       const errorText = await response.text();
       console.log(`Error fetching models from ${connection.provider}:`, errorText);
-      const staticModels = getStaticProviderModels(connection.provider);
-      if (staticModels.length > 0) {
-        return NextResponse.json({
-          provider: connection.provider,
-          connectionId: connection.id,
-          models: staticModels,
-          warning: `Live fetch failed (${response.status}); using static catalog.`,
-        });
-      }
+      return NextResponse.json(
+        { error: `Failed to fetch models: ${response.status}` },
+        { status: response.status }
+      );
       return NextResponse.json(
         { error: `Failed to fetch models: ${response.status}` },
         { status: response.status }
