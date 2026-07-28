@@ -1,46 +1,36 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { LOCALE_COOKIE, normalizeLocale } from "@/i18n/config";
+import { useState, useSyncExternalStore } from "react";
+import { DEFAULT_LOCALE } from "@/i18n/config";
+import { getCurrentLocale, onLocaleChange } from "@/i18n/runtime";
 import { LOCALE_FLAGS } from "@/shared/constants/locales";
 import LanguageSwitcher from "./LanguageSwitcher";
+import { HEADER_ACTION_CLASS } from "./headerAction";
 
-function getLocaleFromCookie() {
-  if (typeof document === "undefined") return "en";
-  const cookie = document.cookie
-    .split(";")
-    .find((c) => c.trim().startsWith(`${LOCALE_COOKIE}=`));
-  const value = cookie ? decodeURIComponent(cookie.split("=")[1]) : "en";
-  return normalizeLocale(value);
-}
+const getServerLocale = () => DEFAULT_LOCALE;
 
 export default function HeaderLanguage() {
   const [open, setOpen] = useState(false);
-  const [locale, setLocale] = useState("en");
-
-  useEffect(() => {
-    setLocale(getLocaleFromCookie());
-  }, [open]);
+  const locale = useSyncExternalStore(onLocaleChange, getCurrentLocale, getServerLocale);
 
   return (
     <>
       <button
+        type="button"
         onClick={() => setOpen(true)}
-        className="flex items-center justify-center p-2 rounded-lg text-text-muted hover:text-text-main hover:bg-black/5 dark:hover:bg-white/5 transition-all"
+        className={HEADER_ACTION_CLASS}
+        aria-label="Change language"
+        aria-haspopup="dialog"
+        aria-expanded={open}
         title="Language"
         data-i18n-skip="true"
       >
-        <span className="text-lg leading-none">{LOCALE_FLAGS[locale] || "🌐"}</span>
+        {/* The flag is decorative; on its own a screen reader would announce
+            the country, not the action. */}
+        <span aria-hidden="true" className="text-lg leading-none">{LOCALE_FLAGS[locale] || "🌐"}</span>
       </button>
 
-      <LanguageSwitcher
-        hideTrigger
-        isOpen={open}
-        onClose={(next) => {
-          setOpen(false);
-          setLocale(next);
-        }}
-      />
+      <LanguageSwitcher hideTrigger isOpen={open} onClose={() => setOpen(false)} />
     </>
   );
 }

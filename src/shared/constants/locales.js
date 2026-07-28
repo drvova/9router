@@ -36,3 +36,46 @@ export const LOCALE_FLAGS = {
   "no": "🇳🇴",
   "fa": "🇮🇷",
 };
+
+// Native-language display names, keyed to match LOCALE_FLAGS.
+export const LOCALE_NAMES = {
+  "en": "English",
+  "vi": "Tiếng Việt",
+  "zh-CN": "简体中文",
+  "zh-TW": "繁體中文",
+  "ja": "日本語",
+  "pt-BR": "Português (Brasil)",
+  "pt-PT": "Português (Portugal)",
+  "ko": "한국어",
+  "es": "Español",
+  "de": "Deutsch",
+  "fr": "Français",
+  "he": "עברית",
+  "ar": "العربية",
+  "ru": "Русский",
+  "pl": "Polski",
+  "cs": "Čeština",
+  "nl": "Nederlands",
+  "tr": "Türkçe",
+  "uk": "Українська",
+  "tl": "Tagalog",
+  "id": "Indonesia",
+  "th": "ไทย",
+  "km": "ខ្មែរ",
+  "hi": "हिन्दी",
+  "bn": "বাংলা",
+  "ur": "اردو",
+  "ro": "Română",
+  "sv": "Svenska",
+  "it": "Italiano",
+  "el": "Ελληνικά",
+  "hu": "Magyar",
+  "fi": "Suomi",
+  "da": "Dansk",
+  "no": "Norsk",
+  "fa": "فارسی",
+};
+
+export function getLocaleInfo(locale) {
+  return { name: LOCALE_NAMES[locale] || locale, flag: LOCALE_FLAGS[locale] || "\u{1F310}" };
+}

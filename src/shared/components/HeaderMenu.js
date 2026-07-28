@@ -5,6 +5,7 @@ import PropTypes from "prop-types";
 import { useTheme } from "@/shared/hooks/useTheme";
 import ChangelogModal from "./ChangelogModal";
 import { ConfirmModal } from "./Modal";
+import { HEADER_ACTION_CLASS } from "./headerAction";
 
 function MenuItem({ icon, label, onClick, trailing, danger }) {
   return (
@@ -16,7 +17,7 @@ function MenuItem({ icon, label, onClick, trailing, danger }) {
           : "text-text-main hover:bg-black/5 dark:hover:bg-white/5"
       }`}
     >
-      <span className={`material-symbols-outlined text-[20px] ${danger ? "" : "text-text-muted"}`}>
+      <span aria-hidden="true" className={`material-symbols-outlined text-[20px] ${danger ? "" : "text-text-muted"}`}>
         {icon}
       </span>
       <span className="flex-1 text-left">{label}</span>
@@ -58,9 +59,16 @@ export default function HeaderMenu({ onLogout }) {
         setIsOpen(false);
       }
     };
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") setIsOpen(false);
+    };
     if (isOpen) {
       document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+        document.removeEventListener("keydown", handleKeyDown);
+      };
     }
   }, [isOpen]);
 
@@ -70,11 +78,15 @@ export default function HeaderMenu({ onLogout }) {
     <>
       <div className="relative" ref={menuRef}>
         <button
+          type="button"
           onClick={() => setIsOpen((v) => !v)}
-          className="flex items-center justify-center p-2 rounded-lg text-text-muted hover:text-text-main hover:bg-black/5 dark:hover:bg-white/5 transition-all"
+          className={HEADER_ACTION_CLASS}
+          aria-label="Menu"
+          aria-haspopup="true"
+          aria-expanded={isOpen}
           title="Menu"
         >
-          <span className="material-symbols-outlined">grid_view</span>
+          <span aria-hidden="true" className="material-symbols-outlined text-[20px]">grid_view</span>
         </button>
 
         {isOpen && (

@@ -46,6 +46,11 @@ export function getCurrentLocale() {
   return currentLocale;
 }
 
+// Publish the current locale to every subscriber.
+function notifyLocaleChange() {
+  reloadCallbacks.forEach((callback) => callback());
+}
+
 // Register callback for locale changes
 export function onLocaleChange(callback) {
   reloadCallbacks.push(callback);
@@ -126,6 +131,7 @@ export async function initRuntimeI18n() {
   
   currentLocale = getLocaleFromCookie();
   await loadTranslations(currentLocale);
+  notifyLocaleChange();
   
   // Process existing DOM
   processElement(document.body);
@@ -155,7 +161,7 @@ export async function reloadTranslations() {
   await loadTranslations(currentLocale);
   
   // Notify all registered callbacks
-  reloadCallbacks.forEach(callback => callback());
+  notifyLocaleChange();
   
   // Re-process entire DOM (will use stored original text)
   processElement(document.body);
