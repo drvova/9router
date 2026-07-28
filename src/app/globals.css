@@ -54,6 +54,12 @@
   /* Borders */
   --color-border: oklch(92.4% var(--neutral-c-bg) var(--neutral-h));
   --color-border-subtle: oklch(95.8% var(--neutral-c-bg) var(--neutral-h));
+  /* Shell seam — the line where the sidebar ground meets the inset content panel.
+     A separator must never be the brightest thing at the join: it has to sit at or
+     below BOTH surfaces it divides, or it stops reading as a seam and starts reading
+     as a rim light. --color-border-subtle cannot do this job because it also draws
+     card rims, which on a dark ground legitimately want to be lighter than their fill. */
+  --color-seam: oklch(94.2% var(--neutral-c-bg) var(--neutral-h));
 
   /* Text */
   --color-text: oklch(19% 0.004 var(--neutral-h));
@@ -128,6 +134,9 @@
 
   --color-border: oklch(32.0% var(--neutral-c-bg) var(--neutral-h));
   --color-border-subtle: oklch(28.5% var(--neutral-c-bg) var(--neutral-h));
+  /* Below the panel (21.8%) and the ground (24.5%) so the join recedes. At 28.5% it was
+     brighter than both and haloed the panel's rounded corner. */
+  --color-seam: oklch(17.5% var(--neutral-c-bg) var(--neutral-h));
 
   --color-text: oklch(94.6% 0.002 var(--neutral-h));
   --color-text-main: var(--color-text);
@@ -194,6 +203,7 @@ select {
   --color-sidebar: var(--color-sidebar);
   --color-border: var(--color-border);
   --color-border-subtle: var(--color-border-subtle);
+  --color-seam: var(--color-seam);
   --color-text: var(--color-text);
   --color-text-main: var(--color-text-main);
   --color-text-muted: var(--color-text-muted);
@@ -307,14 +317,19 @@ input, textarea {
   background: linear-gradient(180deg, var(--color-bg-alt) 0%, var(--color-bg) 100%);
 }
 
-/* macOS Vibrancy */
-.bg-vibrancy {
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  background: rgba(255, 255, 255, 0.72);
-}
-.dark .bg-vibrancy {
-  background: rgba(38, 38, 38, 0.72);
+/* macOS Vibrancy — the sidebar's floating-drawer treatment, mobile only.
+   Above lg the sidebar sits transparent on the page ground; these rules used to win
+   on specificity (.dark .bg-vibrancy = 0,2,0 vs lg:bg-transparent = 0,1,0) and quietly
+   kept a second ground behind the desktop sidebar. Scoped so the fight cannot happen. */
+@media (max-width: 1023px) {
+  .bg-vibrancy {
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    background: rgba(255, 255, 255, 0.72);
+  }
+  .dark .bg-vibrancy {
+    background: rgba(38, 38, 38, 0.72);
+  }
 }
 
 /* macOS Traffic Lights */

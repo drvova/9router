@@ -93,7 +93,7 @@ export default function DashboardLayout({ children }) {
       {/* Main content */}
       {/* Main content — tucked into the corner as a lighter panel over the page ground.
           Only the top-left corner is curved, so the panel reads as inset rather than floating. */}
-      <main className="flex flex-col flex-1 h-full min-w-0 relative transition-colors duration-300 isolate bg-bg overflow-hidden lg:mt-2 lg:h-[calc(100%-0.5rem)] lg:rounded-tl-[var(--radius-md)] lg:border-l lg:border-t lg:border-border-subtle">
+      <main className="flex flex-col flex-1 h-full min-w-0 relative transition-colors duration-300 isolate bg-bg overflow-hidden lg:mt-2 lg:h-[calc(100%-0.5rem)] lg:rounded-tl-[var(--radius-md)] lg:border-l lg:border-t lg:border-seam">
         {/* Faint grid background */}
         <div className="landing-grid absolute inset-0 pointer-events-none -z-10" aria-hidden="true" />
         <Header key={pathname} onMenuClick={() => setSidebarOpen(true)} />
