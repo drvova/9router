@@ -12,6 +12,7 @@ import DonateModal from "@/shared/components/DonateModal";
 import { useHeaderSearchStore } from "@/store/headerSearchStore";
 import { OAUTH_PROVIDERS, APIKEY_PROVIDERS } from "@/shared/constants/config";
 import { MEDIA_PROVIDER_KINDS, AI_PROVIDERS } from "@/shared/constants/providers";
+import { findNavPage } from "@/shared/constants/navigation";
 import { getProviderIconSrc } from "@/shared/utils/providerIcon";
 import { translate } from "@/i18n/runtime";
 
@@ -29,26 +30,13 @@ const getPageInfo = (pathname) => {
       title: provider?.name || providerId,
       description: "",
       breadcrumbs: [
-        { label: "Media Providers", href: `/dashboard/media-providers/${kindId}` },
         { label: kindConfig?.label || kindId, href: `/dashboard/media-providers/${kindId}` },
         { label: provider?.name || providerId, image: getProviderIconSrc(providerId) },
       ],
     };
   }
 
-  // Media provider kind: /dashboard/media-providers/[kind]
-  const mediaKindMatch = pathname.match(/\/media-providers\/([^/]+)$/);
-  if (mediaKindMatch) {
-    const kindId = mediaKindMatch[1];
-    const kindConfig = MEDIA_PROVIDER_KINDS.find((k) => k.id === kindId);
-    return {
-      title: kindConfig?.label || kindId,
-      description: `Manage your ${kindConfig?.label || kindId} providers`,
-      icon: kindConfig?.icon || "perm_media",
-      breadcrumbs: [],
-    };
-  }
-
+  // Media provider kind pages resolve from the navigation config below.
   // Provider detail page: /dashboard/providers/[id]
   const providerMatch = pathname.match(/\/providers\/([^/]+)$/);
   if (providerMatch) {
@@ -70,116 +58,19 @@ const getPageInfo = (pathname) => {
     }
   }
 
-  if (pathname.includes("/providers") && !pathname.includes("/media-providers"))
-    return {
-      title: "Providers",
-      description: "Manage your AI provider connections",
-      icon: "dns",
-      breadcrumbs: [],
-    };
-  if (pathname.includes("/combos"))
-    return {
-      title: "Combos",
-      description: "Model combos with fallback",
-      icon: "layers",
-      breadcrumbs: [],
-    };
-  if (pathname.includes("/usage"))
-    return {
-      title: "Usage & Analytics",
-      description:
-        "Monitor your API usage, token consumption, and request logs",
-      icon: "bar_chart",
-      breadcrumbs: [],
-    };
-  if (pathname.includes("/auth-files"))
-    return {
-      title: "Auth Files",
-      description: "Map provider credentials stored in the local database",
-      icon: "vpn_key",
-      breadcrumbs: [],
-    };
-  if (pathname.includes("/quota"))
-    return {
-      title: "Quota Tracker",
-      description: "Track and manage your API quota limits",
-      icon: "data_usage",
-      breadcrumbs: [],
-    };
-  if (pathname.includes("/mitm"))
-    return {
-      title: "MITM Proxy",
-      description: "Intercept CLI tool traffic and route through 9Router",
-      icon: "security",
-      breadcrumbs: [],
-    };
-  if (pathname.includes("/token-saver"))
-    return {
-      title: "Token Saver",
-      description: "Compress prompts and outputs to save tokens",
-      icon: "savings",
-      breadcrumbs: [],
-    };
-  if (pathname.includes("/cli-tools"))
-    return {
-      title: "CLI Tools",
-      description: "Configure CLI tools",
-      icon: "terminal",
-      breadcrumbs: [],
-    };
-  if (pathname.includes("/proxy-pools"))
-    return {
-      title: "Proxy Pools",
-      description: "Manage your proxy pool configurations",
-      icon: "lan",
-      breadcrumbs: [],
-    };
-  if (pathname.includes("/skills"))
-    return {
-      title: "Agent Skills",
-      description: "Copy a link and paste to your AI to use 9Router — no install needed",
-      icon: "extension",
-      breadcrumbs: [],
-    };
-  if (pathname.includes("/endpoint"))
-    return {
-      title: "Endpoint",
-      description: "API endpoint configuration",
-      icon: "api",
-      breadcrumbs: [],
-    };
-  if (pathname.includes("/profile"))
-    return {
-      title: "Settings",
-      description: "Manage your preferences",
-      icon: "settings",
-      breadcrumbs: [],
-    };
-  if (pathname.includes("/translator"))
-    return {
-      title: "Translator",
-      description: "Debug translation flow between formats",
-      icon: "translate",
-      breadcrumbs: [],
-    };
-  if (pathname.includes("/console-log"))
-    return {
-      title: "Console Log",
-      description: "Live server console output",
-      icon: "monitor",
-      breadcrumbs: [],
-    };
-  if (pathname === "/dashboard")
-    return {
-      title: "Endpoint",
-      description: "API endpoint configuration",
-      icon: "api",
-      breadcrumbs: [],
-    };
-  return { title: "", description: "", breadcrumbs: [] };
+  // Every static page resolves from the shared navigation config, so the
+  // sidebar label and this header title can never drift apart.
+  const page = findNavPage(pathname);
+  if (!page) return { title: "", description: "", breadcrumbs: [] };
+  return {
+    title: page.title || page.label,
+    description: page.description || "",
+    icon: page.icon,
+    breadcrumbs: [],
+  };
 };
 
-export default function Header({ onMenuClick, showMenuButton = true }) {
+export default function Header({ onMenuClick, menuOpen = false, showMenuButton = true }) {
   const pathname = usePathname();
   const [displayName, setDisplayName] = useState("");
   const [loginMethod, setLoginMethod] = useState("");
@@ -232,10 +123,14 @@ export default function Header({ onMenuClick, showMenuButton = true }) {
       <div className="flex items-center gap-3 lg:hidden shrink-0">
         {showMenuButton && (
           <button
+            type="button"
             onClick={onMenuClick}
-            className="text-text-main hover:text-primary transition-colors"
+            aria-label="Open navigation menu"
+            aria-controls="dashboard-sidebar"
+            aria-expanded={menuOpen}
+            className="flex size-11 -ml-2 items-center justify-center text-text-main hover:text-primary transition-colors"
           >
-            <span className="material-symbols-outlined">menu</span>
+            <span aria-hidden="true" className="material-symbols-outlined">menu</span>
           </button>
         )}
       </div>
@@ -243,48 +138,59 @@ export default function Header({ onMenuClick, showMenuButton = true }) {
       {/* Page title with breadcrumbs */}
       <div className="flex flex-col min-w-0 flex-1">
         {breadcrumbs.length > 0 ? (
-          <div className="flex items-center gap-2">
-            {breadcrumbs.map((crumb, index) => (
-              <div
-                key={`${crumb.label}-${crumb.href || "current"}`}
-                className="flex items-center gap-2"
-              >
-                {index > 0 && (
-                  <span className="material-symbols-outlined text-text-muted text-base">
-                    chevron_right
-                  </span>
-                )}
-                {crumb.href ? (
-                  <Link
-                    href={crumb.href}
-                    className="text-text-muted hover:text-primary transition-colors"
-                  >
-                    {crumb.label}
-                  </Link>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    {crumb.image && (
-                      <ProviderIcon
-                        src={crumb.image}
-                        alt={crumb.label}
-                        size={28}
-                        className="object-contain rounded max-w-[28px] max-h-[28px]"
-                        fallbackText={crumb.label.slice(0, 2).toUpperCase()}
-                      />
-                    )}
-                    <h1 className="text-base lg:text-2xl font-semibold text-text-main tracking-tight truncate">
-                      {translate(crumb.label)}
-                    </h1>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+          <nav aria-label="Breadcrumb">
+            <ol className="flex items-center gap-2">
+              {breadcrumbs.map((crumb, index) => (
+                <li
+                  key={`${crumb.label}-${crumb.href || "current"}`}
+                  className="flex items-center gap-2"
+                >
+                  {index > 0 && (
+                    <span
+                      aria-hidden="true"
+                      className="material-symbols-outlined text-text-muted text-base"
+                    >
+                      chevron_right
+                    </span>
+                  )}
+                  {crumb.href ? (
+                    <Link
+                      href={crumb.href}
+                      className="text-text-muted hover:text-primary transition-colors"
+                    >
+                      {crumb.label}
+                    </Link>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      {crumb.image && (
+                        <ProviderIcon
+                          src={crumb.image}
+                          alt=""
+                          size={28}
+                          className="object-contain rounded max-w-[28px] max-h-[28px]"
+                          fallbackText={crumb.label.slice(0, 2).toUpperCase()}
+                        />
+                      )}
+                      <h1
+                        aria-current="page"
+                        className="text-base lg:text-2xl font-semibold text-text-main tracking-tight truncate"
+                      >
+                        {translate(crumb.label)}
+                      </h1>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </nav>
         ) : title ? (
           <div>
             <div className="flex items-center gap-2">
               {icon && (
-                <span className="material-symbols-outlined text-primary text-xl lg:text-2xl">
+                <span
+                  aria-hidden="true"
+                  className="material-symbols-outlined text-primary text-xl lg:text-2xl"
+                >
                   {icon}
                 </span>
               )}
@@ -366,5 +272,6 @@ function HeaderSearch() {
 
 Header.propTypes = {
   onMenuClick: PropTypes.func,
+  menuOpen: PropTypes.bool,
   showMenuButton: PropTypes.bool,
 };
