@@ -11,7 +11,7 @@ function MenuItem({ icon, label, onClick, trailing, danger }) {
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-3 w-full px-4 py-2.5 text-sm transition-colors ${
+      className={`flex items-center gap-3 w-full px-4 py-2.5 text-sm motion-safe:transition-colors ${
         danger
           ? "text-red-500 hover:bg-red-500/10"
           : "text-text-main hover:bg-black/5 dark:hover:bg-white/5"
@@ -90,7 +90,7 @@ export default function HeaderMenu({ onLogout }) {
         </button>
 
         {isOpen && (
-          <div className="absolute right-0 top-full mt-2 w-60 bg-surface border border-black/10 dark:border-white/10 rounded-xl shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150 overflow-hidden py-1">
+          <div className="absolute right-0 top-full mt-2 w-60 bg-surface border border-black/10 dark:border-white/10 rounded-xl shadow-2xl z-50 fade-in motion-reduce:animate-none! overflow-hidden py-1">
             <MenuItem
               icon="history"
               label="Change Log"
@@ -103,7 +103,7 @@ export default function HeaderMenu({ onLogout }) {
             />
             <MenuItem
               icon="power_settings_new"
-              label="Shutdown"
+              label="Shut down server"
               danger
               onClick={() => { close(); setShutdownOpen(true); }}
             />
@@ -122,9 +122,9 @@ export default function HeaderMenu({ onLogout }) {
         isOpen={shutdownOpen}
         onClose={() => setShutdownOpen(false)}
         onConfirm={handleShutdown}
-        title="Close Proxy"
-        message="Are you sure you want to close the proxy server?"
-        confirmText="Close"
+        title="Shut down server"
+        message="The proxy will stop routing requests until you start it again."
+        confirmText="Shut down"
         cancelText="Cancel"
         variant="danger"
         loading={isShuttingDown}

@@ -128,7 +128,7 @@ export default function Header({ onMenuClick, menuOpen = false, showMenuButton =
             aria-label="Open navigation menu"
             aria-controls="dashboard-sidebar"
             aria-expanded={menuOpen}
-            className="flex size-11 -ml-2 items-center justify-center text-text-main hover:text-primary transition-colors"
+            className="flex size-11 -ml-2 items-center justify-center text-text-main hover:text-primary motion-safe:transition-colors"
           >
             <span aria-hidden="true" className="material-symbols-outlined">menu</span>
           </button>
@@ -156,7 +156,7 @@ export default function Header({ onMenuClick, menuOpen = false, showMenuButton =
                   {crumb.href ? (
                     <Link
                       href={crumb.href}
-                      className="text-text-muted hover:text-primary transition-colors"
+                      className="text-text-muted hover:text-primary motion-safe:transition-colors"
                     >
                       {crumb.label}
                     </Link>
@@ -222,7 +222,7 @@ export default function Header({ onMenuClick, menuOpen = false, showMenuButton =
         <button
           type="button"
           onClick={() => setDonateOpen(true)}
-          className="flex items-center gap-1.5 shrink-0 px-3 h-9 rounded-[10px] border border-pink-500/30 bg-pink-500/10 text-pink-600 dark:text-pink-400 hover:bg-pink-500/20 transition-colors text-sm font-medium"
+          className="flex items-center gap-1.5 shrink-0 px-3 h-9 rounded-[10px] border border-pink-500/30 bg-pink-500/10 text-pink-600 dark:text-pink-400 hover:bg-pink-500/20 motion-safe:transition-colors text-sm font-medium"
           aria-label="Donate"
         >
           <span aria-hidden="true" className="material-symbols-outlined text-[18px]">volunteer_activism</span>
@@ -256,7 +256,7 @@ function HeaderSearch() {
         onChange={(e) => setQuery(e.target.value)}
         placeholder={placeholder}
         aria-label={placeholder || "Search"}
-        className="w-full h-9 pl-7 pr-8 rounded-[10px] border border-border bg-surface/60 text-sm focus:outline-none focus:border-primary/50 transition-colors"
+        className="w-full h-9 pl-7 pr-8 rounded-[10px] border border-border bg-surface/60 text-sm focus:border-primary/50 motion-safe:transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary/60"
       />
       {query && (
         <button

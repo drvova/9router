@@ -1,6 +1,6 @@
 "use client";
 
-import { DEFAULT_LOCALE, LOCALE_COOKIE, normalizeLocale } from "./config";
+import { DEFAULT_LOCALE, LOCALE_COOKIE, isRtlLocale, normalizeLocale } from "./config";
 
 let translationMap = {};
 let currentLocale = DEFAULT_LOCALE;
@@ -44,6 +44,13 @@ export function translate(text) {
 // Get current locale - exported for use in components
 export function getCurrentLocale() {
   return currentLocale;
+}
+
+// Mirror the active locale onto <html lang/dir> for screen readers and RTL scripts.
+function applyDocumentLocale() {
+  if (typeof document === "undefined") return;
+  document.documentElement.lang = currentLocale;
+  document.documentElement.dir = isRtlLocale(currentLocale) ? "rtl" : "ltr";
 }
 
 // Publish the current locale to every subscriber.
@@ -130,6 +137,7 @@ export async function initRuntimeI18n() {
   if (typeof window === "undefined") return;
   
   currentLocale = getLocaleFromCookie();
+  applyDocumentLocale();
   await loadTranslations(currentLocale);
   notifyLocaleChange();
   
@@ -158,6 +166,7 @@ export async function initRuntimeI18n() {
 // Reload translations when locale changes
 export async function reloadTranslations() {
   currentLocale = getLocaleFromCookie();
+  applyDocumentLocale();
   await loadTranslations(currentLocale);
   
   // Notify all registered callbacks

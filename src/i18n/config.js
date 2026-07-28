@@ -38,6 +38,13 @@ export const LOCALES = [
 export const DEFAULT_LOCALE = "en";
 export const LOCALE_COOKIE = "locale";
 
+// Locales written right-to-left. Drives the <html dir> attribute.
+export const RTL_LOCALES = new Set(["he", "ar", "fa", "ur"]);
+
+export function isRtlLocale(locale) {
+  return RTL_LOCALES.has(normalizeLocale(locale));
+}
+
 export const LOCALE_NAMES = {
   en: "English",
   vi: "Tiếng Việt",

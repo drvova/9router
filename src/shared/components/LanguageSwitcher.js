@@ -13,6 +13,7 @@ export default function LanguageSwitcher({ className = "", isOpen: controlledOpe
   const [isPending, setIsPending] = useState(false);
   const [internalOpen, setInternalOpen] = useState(false);
   const modalRef = useRef(null);
+  const previousFocusRef = useRef(null);
 
   const isControlled = typeof controlledOpen === "boolean";
   const isOpen = isControlled ? controlledOpen : internalOpen;
@@ -24,17 +25,29 @@ export default function LanguageSwitcher({ className = "", isOpen: controlledOpe
     }
   };
 
-  // Close modal when clicking outside
+  // Close on outside click or Escape; move focus into the dialog and restore it on close
   useEffect(() => {
+    if (!isOpen) return;
+
     function handleClickOutside(event) {
       if (modalRef.current && !modalRef.current.contains(event.target)) {
         setIsOpen(false);
       }
     }
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
+    function handleEscape(event) {
+      if (event.key === "Escape") setIsOpen(false);
     }
+
+    previousFocusRef.current = document.activeElement;
+    modalRef.current?.focus();
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+      previousFocusRef.current?.focus?.();
+    };
   }, [isOpen]);
 
   const handleSetLocale = async (nextLocale) => {
@@ -62,7 +75,7 @@ export default function LanguageSwitcher({ className = "", isOpen: controlledOpe
     <button
       onClick={() => setIsOpen(!isOpen)}
       disabled={isPending}
-      className="flex items-center gap-2 px-3 py-2 rounded-lg text-text-muted hover:text-text-main hover:bg-surface/60 transition-colors"
+      className="flex items-center gap-2 px-3 py-2 rounded-lg text-text-muted hover:text-text-main hover:bg-surface/60 motion-safe:transition-colors"
       title="Language"
       data-i18n-skip="true"
     >
@@ -78,21 +91,25 @@ export default function LanguageSwitcher({ className = "", isOpen: controlledOpe
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4" data-i18n-skip="true">
         {/* Overlay */}
         <div
-          className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+          className="absolute inset-0 bg-scrim backdrop-blur-sm"
           onClick={() => setIsOpen(false)}
         />
 
         {/* Modal content */}
         <div
           ref={modalRef}
-          className="relative w-full bg-surface border border-black/10 dark:border-white/10 rounded-xl shadow-2xl animate-in fade-in zoom-in-95 duration-200 max-w-2xl flex flex-col max-h-[80vh]"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="language-modal-title"
+          tabIndex={-1}
+          className="relative w-full bg-surface border border-black/10 dark:border-white/10 rounded-xl shadow-2xl fade-in motion-reduce:animate-none! max-w-2xl flex flex-col max-h-[80vh] outline-none"
         >
           {/* Modal header */}
           <div className="flex items-center justify-between p-3 border-b border-black/5 dark:border-white/5">
-            <h2 className="text-lg font-semibold text-text-main">Select Language</h2>
+            <h2 id="language-modal-title" className="text-lg font-semibold text-text-main">Select Language</h2>
             <button
               onClick={() => setIsOpen(false)}
-              className="p-1.5 rounded-lg text-text-muted hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+              className="p-1.5 rounded-lg text-text-muted hover:bg-black/5 dark:hover:bg-white/5 motion-safe:transition-colors"
               aria-label="Close"
             >
               <span className="material-symbols-outlined text-[20px]">close</span>
@@ -100,7 +117,7 @@ export default function LanguageSwitcher({ className = "", isOpen: controlledOpe
           </div>
 
           {/* Modal body - fixed grid columns, equal sizing */}
-          <div className="p-6 overflow-y-auto flex-1">
+          <div className="p-6 overflow-y-auto overscroll-contain flex-1">
             <div className="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-2">
               {LOCALES.map((item) => {
                 const active = locale === item;
@@ -110,7 +127,7 @@ export default function LanguageSwitcher({ className = "", isOpen: controlledOpe
                     key={item}
                     onClick={() => handleSetLocale(item)}
                     disabled={isPending}
-                    className={`flex flex-col items-center justify-start gap-1 px-2 py-3 rounded-lg text-xs font-medium transition-colors w-full ${
+                    className={`flex flex-col items-center justify-start gap-1 px-2 py-3 rounded-lg text-xs font-medium motion-safe:transition-colors w-full ${
                       active
                         ? "bg-primary/15 text-primary ring-2 ring-primary"
                         : "text-text-main hover:bg-black/5 dark:hover:bg-white/5"

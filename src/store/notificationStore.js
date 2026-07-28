@@ -39,7 +39,9 @@ export const useNotificationStore = create((set, get) => ({
   clearAll: () => set({ notifications: [] }),
 
   success: (message, title) => get().addNotification({ type: "success", message, title }),
-  error: (message, title) => get().addNotification({ type: "error", message, title, duration: 8000 }),
+  // Errors persist until dismissed — `duration: 0` skips the auto-dismiss timer above.
+  // Only errors: success/warning/info keep the 5000ms default.
+  error: (message, title) => get().addNotification({ type: "error", message, title, duration: 0 }),
   warning: (message, title) => get().addNotification({ type: "warning", message, title }),
   info: (message, title) => get().addNotification({ type: "info", message, title }),
 }));

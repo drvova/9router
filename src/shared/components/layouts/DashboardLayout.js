@@ -64,7 +64,14 @@ export default function DashboardLayout({ children }) {
       >
         Skip to main content
       </a>
-      <div className="fixed top-4 right-4 z-[80] flex w-[min(92vw,380px)] flex-col gap-2">
+      {/* Stable, always-mounted region: a polite live region only announces reliably
+         when the container exists before its contents change. `status` (not `alert`)
+         because this carries routine success/info toasts, not only urgent errors. */}
+      <div
+        role="status"
+        aria-live="polite"
+        className="fixed top-4 right-4 z-[80] flex w-[min(92vw,380px)] flex-col gap-2"
+      >
         {notifications.map((n) => {
           const style = getToastStyle(n.type);
           return (
@@ -96,7 +103,7 @@ export default function DashboardLayout({ children }) {
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/20 lg:hidden"
+          className="fixed inset-0 z-40 bg-scrim lg:hidden"
           onClick={() => setSidebarOpen(false)}
           aria-hidden="true"
         />
@@ -109,7 +116,7 @@ export default function DashboardLayout({ children }) {
       <div
         id="dashboard-sidebar"
         inert={isMobile && !sidebarOpen}
-        className={`fixed inset-y-0 left-0 z-50 flex transition-transform duration-300 ease-in-out lg:static lg:z-auto lg:translate-x-0 lg:transition-none ${
+        className={`fixed inset-y-0 left-0 z-50 flex overscroll-contain motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-in-out lg:static lg:z-auto lg:translate-x-0 lg:transition-none ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -119,7 +126,7 @@ export default function DashboardLayout({ children }) {
       {/* Main content */}
       {/* Main content — tucked into the corner as a lighter panel over the page ground.
           Only the top-left corner is curved, so the panel reads as inset rather than floating. */}
-      <main id="main-content" className="flex flex-col flex-1 h-full min-w-0 relative transition-colors duration-300 isolate bg-bg overflow-hidden lg:mt-2 lg:h-[calc(100%-0.5rem)] lg:rounded-tl-[var(--radius-md)] lg:border-l lg:border-t lg:border-seam">
+      <main id="main-content" className="flex flex-col flex-1 h-full min-w-0 relative motion-safe:transition-colors motion-safe:duration-300 isolate bg-bg overflow-hidden lg:mt-2 lg:h-[calc(100%-0.5rem)] lg:rounded-tl-[var(--radius-md)] lg:border-l lg:border-t lg:border-seam">
         {/* Faint grid background */}
         <div className="landing-grid absolute inset-0 pointer-events-none -z-10" aria-hidden="true" />
         <Header menuOpen={sidebarOpen} onMenuClick={() => setSidebarOpen(true)} />

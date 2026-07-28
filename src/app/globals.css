@@ -61,6 +61,10 @@
      card rims, which on a dark ground legitimately want to be lighter than their fill. */
   --color-seam: oklch(94.2% var(--neutral-c-bg) var(--neutral-h));
 
+  /* Overlay scrim — one value for every modal, drawer and dialog backdrop, so
+     depth does not vary by which component happened to render the overlay. */
+  --color-scrim: oklch(0 0 0 / 0.45);
+
   /* Text */
   --color-text: oklch(19% 0.004 var(--neutral-h));
   --color-text-main: var(--color-text);
@@ -138,6 +142,9 @@
      brighter than both and haloed the panel's rounded corner. */
   --color-seam: oklch(17.5% var(--neutral-c-bg) var(--neutral-h));
 
+  /* Heavier on a dark ground: 0.45 over an already-dark panel stops reading as a scrim. */
+  --color-scrim: oklch(0 0 0 / 0.62);
+
   --color-text: oklch(94.6% 0.002 var(--neutral-h));
   --color-text-main: var(--color-text);
   --color-text-muted: oklch(77.8% var(--neutral-c-ink) var(--neutral-h));   /* APCA Lc 50.2 -> 60.0 on --color-surface, the lightest ground it sits on */
@@ -204,6 +211,7 @@ select {
   --color-border: var(--color-border);
   --color-border-subtle: var(--color-border-subtle);
   --color-seam: var(--color-seam);
+  --color-scrim: var(--color-scrim);
   --color-text: var(--color-text);
   --color-text-main: var(--color-text-main);
   --color-text-muted: var(--color-text-muted);
