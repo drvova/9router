@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getProviderConnectionById } from "@/models";
 import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider } from "@/shared/constants/providers";
 import { GEMINI_CONFIG } from "@/lib/oauth/constants/oauth";
-import { refreshGoogleToken, refreshCodexToken, updateProviderCredentials } from "@/sse/services/tokenRefresh";
+import { refreshGoogleToken, refreshCodexToken, refreshTokenByProvider, updateProviderCredentials } from "@/sse/services/tokenRefresh";
 import { resolveOllamaLocalHost, PROVIDERS } from "open-sse/config/providers.js";
 import { PROVIDER_MEDIA } from "open-sse/providers/index.js";
 import { getModelsByProviderId } from "open-sse/config/providerModels.js";
@@ -236,6 +236,49 @@ const buildOAuthResolver = ({ refreshFn, fetchFn, parseFn, errorLabel }) => asyn
   return { models: [], warning };
 };
 
+// Grok CLI proxy catalog (https://cli-chat-proxy.grok.com/v1/models). Shared by the
+// `grok-cli` provider and xAI OAuth connections — both hold the same device-code token.
+const resolveGrokCliCatalog = async (connection, staticFallbackId) => {
+  const proxy = await resolveConnectionProxyConfig(connection.providerSpecificData || {});
+  const result = await resolveGrokCliModels({
+    ...connection,
+    connectionId: connection.id,
+  }, {
+    log: console,
+    proxyOptions: {
+      connectionProxyEnabled: proxy.connectionProxyEnabled === true,
+      connectionProxyUrl: proxy.connectionProxyUrl || "",
+      connectionNoProxy: proxy.connectionNoProxy || "",
+      vercelRelayUrl: proxy.vercelRelayUrl || "",
+      strictProxy: proxy.strictProxy === true,
+    },
+    onCredentialsRefreshed: async (refreshed) => {
+      await updateProviderCredentials(connection.id, {
+        ...refreshed,
+        existingProviderSpecificData: connection.providerSpecificData || {},
+      });
+    },
+  });
+  if (result.models.length) return result;
+  return {
+    models: getStaticProviderModels(staticFallbackId),
+    warning: result.warning || "Grok CLI returned no live models; using static catalog.",
+  };
+};
+
+const fetchOpenAIStyleCatalog = async (url, apiKey, label) => {
+  const response = await fetch(url, {
+    method: "GET",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.log(`Error fetching models from ${label}:`, errorText);
+    return { error: `Failed to fetch models: ${response.status}`, status: response.status };
+  }
+  return { models: parseOpenAIStyleModels(await response.json()) };
+};
+
 // Provider models endpoints configuration
 const PROVIDER_MODELS_CONFIG = {
   claude: {
@@ -358,7 +401,6 @@ const PROVIDER_MODELS_CONFIG = {
   // OpenAI-compatible API key providers
   deepseek: createOpenAIModelsConfig("https://api.deepseek.com/models"),
   groq: createOpenAIModelsConfig("https://api.groq.com/openai/v1/models"),
-  xai: createOpenAIModelsConfig("https://api.x.ai/v1/models"),
   mistral: createOpenAIModelsConfig("https://api.mistral.ai/v1/models"),
   perplexity: createOpenAIModelsConfig("https://api.perplexity.ai/v1/models"),
   "perplexity-agent": createOpenAIModelsConfig("https://api.perplexity.ai/v1/models"),
@@ -507,34 +549,14 @@ const PROVIDER_MODELS_CONFIG = {
       errorLabel: "Failed to fetch Gemini CLI models"
     })
   },
-  "grok-cli": {
-    customResolver: async (connection) => {
-      const proxy = await resolveConnectionProxyConfig(connection.providerSpecificData || {});
-      const result = await resolveGrokCliModels({
-        ...connection,
-        connectionId: connection.id,
-      }, {
-        log: console,
-        proxyOptions: {
-          connectionProxyEnabled: proxy.connectionProxyEnabled === true,
-          connectionProxyUrl: proxy.connectionProxyUrl || "",
-          connectionNoProxy: proxy.connectionNoProxy || "",
-          vercelRelayUrl: proxy.vercelRelayUrl || "",
-          strictProxy: proxy.strictProxy === true,
-        },
-        onCredentialsRefreshed: async (refreshed) => {
-          await updateProviderCredentials(connection.id, {
-            ...refreshed,
-            existingProviderSpecificData: connection.providerSpecificData || {},
-          });
-        },
-      });
-      if (result.models.length) return result;
-      return {
-        models: getStaticProviderModels("grok-cli"),
-        warning: result.warning || "Grok CLI returned no live models; using static catalog.",
-      };
-    },
+  "grok-cli": { customResolver: (connection) => resolveGrokCliCatalog(connection, "grok-cli") },
+  // xAI device-code tokens carry `grok-cli:access` and list against the CLI proxy;
+  // api.x.ai/v1/models answers console API keys only. Route by which credential is held.
+  xai: {
+    customResolver: (connection) =>
+      connection.apiKey
+        ? fetchOpenAIStyleCatalog("https://api.x.ai/v1/models", connection.apiKey, "xai")
+        : resolveGrokCliCatalog(connection, "xai"),
   },
   "ollama-local": {
     customResolver: async (connection) => {
@@ -668,35 +690,40 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: "No valid token found" }, { status: 401 });
     }
 
-    // Build request URL
-    let url = config.url;
-    if (connection.provider === "qwen") {
-      url = resolveQwenModelsUrl(connection);
-    }
-    if (config.authQuery) {
-      url += `?${config.authQuery}=${token}`;
-    }
+    const baseUrl = connection.provider === "qwen" ? resolveQwenModelsUrl(connection) : config.url;
 
-    // Build headers
-    const headers = { ...config.headers };
-    if (token && config.authHeader && !config.authQuery) {
-      headers[config.authHeader] = (config.authPrefix || "") + token;
-    }
-    if (token && config.alsoBearer && !headers["Authorization"]) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-
-    // Make request
-    const fetchOptions = {
-      method: config.method,
-      headers
+    const requestWithToken = (activeToken) => {
+      const url = config.authQuery ? `${baseUrl}?${config.authQuery}=${activeToken}` : baseUrl;
+      const headers = { ...config.headers };
+      if (activeToken && config.authHeader && !config.authQuery) {
+        headers[config.authHeader] = (config.authPrefix || "") + activeToken;
+      }
+      if (activeToken && config.alsoBearer && !headers["Authorization"]) {
+        headers["Authorization"] = `Bearer ${activeToken}`;
+      }
+      const fetchOptions = { method: config.method, headers };
+      if (config.body && config.method === "POST") {
+        fetchOptions.body = JSON.stringify(config.body);
+      }
+      return fetch(url, fetchOptions);
     };
 
-    if (config.body && config.method === "POST") {
-      fetchOptions.body = JSON.stringify(config.body);
-    }
+    let response = await requestWithToken(token);
 
-    const response = await fetch(url, fetchOptions);
+    // An OAuth access token that expired between chat calls rejects with 401/403.
+    // Refresh through the provider's registered handler, persist, and retry once —
+    // the same contract buildOAuthResolver gives its hand-written providers.
+    if (!response.ok && (response.status === 401 || response.status === 403) && connection.refreshToken) {
+      const refreshed = await refreshTokenByProvider(connection.provider, connection);
+      if (refreshed?.accessToken && refreshed.accessToken !== token) {
+        await updateProviderCredentials(connection.id, {
+          accessToken: refreshed.accessToken,
+          refreshToken: refreshed.refreshToken || connection.refreshToken,
+          expiresIn: refreshed.expiresIn,
+        });
+        response = await requestWithToken(refreshed.accessToken);
+      }
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
