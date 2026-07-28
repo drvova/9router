@@ -351,14 +351,17 @@ export default function ProviderDetailPage() {
     }
   }, [providerId, isCompatible]);
 
-  const handleUpdateNode = async (formData) => {
+  const handleUpdateNode = async ({ systemPrompt: nextSystemPrompt, ...nodeFields }) => {
     const res = await fetch(`/api/provider-nodes/${providerId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formData),
+      body: JSON.stringify(nodeFields),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Failed to update provider node");
+    // The system prompt is not a node field — it lives in settings under the same
+    // key the System Prompt card writes, so both editors stay on one source of truth.
+    if (nextSystemPrompt !== undefined) await persistSystemPrompt(nextSystemPrompt);
     setProviderNode(data.node);
     await fetchConnections();
     setShowEditNodeModal(false);
@@ -407,26 +410,32 @@ export default function ProviderDetailPage() {
     saveProviderStrategy("round-robin", value);
   };
 
+  // Single write path for the per-provider system prompt, shared by the card below
+  // and the compatible-node edit modal. Throws so each caller surfaces its own error.
+  const persistSystemPrompt = async (value) => {
+    const settingsRes = await fetch("/api/settings", { cache: "no-store" });
+    if (!settingsRes.ok) throw new Error("Failed to read settings");
+    const settingsData = await settingsRes.json();
+    const updated = { ...(settingsData.providerSystemPrompt || {}) };
+    const trimmed = (value || "").trim();
+    if (trimmed) updated[providerId] = trimmed;
+    else delete updated[providerId];
+
+    const res = await fetch("/api/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ providerSystemPrompt: updated }),
+    });
+    if (!res.ok) throw new Error("Failed to save system prompt");
+    setSystemPrompt(trimmed);
+    setSavedSystemPrompt(trimmed);
+  };
+
   const saveSystemPrompt = async () => {
     setSystemPromptSaving(true);
     setSystemPromptError(null);
     try {
-      const settingsRes = await fetch("/api/settings", { cache: "no-store" });
-      if (!settingsRes.ok) throw new Error("Failed to read settings");
-      const settingsData = await settingsRes.json();
-      const updated = { ...(settingsData.providerSystemPrompt || {}) };
-      const trimmed = systemPrompt.trim();
-      if (trimmed) updated[providerId] = trimmed;
-      else delete updated[providerId];
-
-      const res = await fetch("/api/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ providerSystemPrompt: updated }),
-      });
-      if (!res.ok) throw new Error("Failed to save system prompt");
-      setSystemPrompt(trimmed);
-      setSavedSystemPrompt(trimmed);
+      await persistSystemPrompt(systemPrompt);
     } catch (error) {
       setSystemPromptError(error.message);
     } finally {
@@ -1826,6 +1835,7 @@ export default function ProviderDetailPage() {
         <EditCompatibleNodeModal
           isOpen={showEditNodeModal}
           node={providerNode}
+          systemPrompt={savedSystemPrompt}
           onSave={handleUpdateNode}
           onClose={() => setShowEditNodeModal(false)}
           isAnthropic={isAnthropicCompatible}

@@ -5,13 +5,14 @@ import PropTypes from "prop-types";
 import { Button, Badge, Input, Modal, Select } from "@/shared/components";
 import { formatHeaderLines } from "@/shared/utils";
 
-export default function EditCompatibleNodeModal({ isOpen, node, onSave, onClose, isAnthropic }) {
+export default function EditCompatibleNodeModal({ isOpen, node, systemPrompt = "", onSave, onClose, isAnthropic }) {
   const [formData, setFormData] = useState({
     name: "",
     prefix: "",
     apiType: "chat",
     baseUrl: "https://api.openai.com/v1",
     headers: "",
+    systemPrompt: "",
   });
   const [saving, setSaving] = useState(false);
   const [checkKey, setCheckKey] = useState("");
@@ -28,9 +29,10 @@ export default function EditCompatibleNodeModal({ isOpen, node, onSave, onClose,
         apiType: node.apiType || "chat",
         baseUrl: node.baseUrl || (isAnthropic ? "https://api.anthropic.com/v1" : "https://api.openai.com/v1"),
         headers: formatHeaderLines(node.headers),
+        systemPrompt,
       });
     }
-  }, [node, isAnthropic]);
+  }, [node, isAnthropic, systemPrompt]);
 
   const apiTypeOptions = [
     { value: "chat", label: "Chat Completions" },
@@ -47,6 +49,7 @@ export default function EditCompatibleNodeModal({ isOpen, node, onSave, onClose,
         prefix: formData.prefix,
         baseUrl: formData.baseUrl,
         headers: formData.headers,
+        systemPrompt: formData.systemPrompt,
       };
       if (!isAnthropic) {
         payload.apiType = formData.apiType;
@@ -127,6 +130,19 @@ export default function EditCompatibleNodeModal({ isOpen, node, onSave, onClose,
             Optional. One <code>Name: Value</code> per line. Sent on every request and applied last, so these override the defaults (including Authorization). Use for upstreams that gate on client identity.
           </p>
         </div>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-text-main">System Prompt</label>
+          <textarea
+            className="w-full rounded-[10px] border border-transparent bg-surface-2 p-2 text-sm resize-y min-h-[80px] text-text-main placeholder-text-muted/70 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+            placeholder="e.g. Always answer in British English. Prefer tables over prose."
+            value={formData.systemPrompt}
+            onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
+          />
+          <p className="text-xs text-text-muted">
+            Optional. Appended to the system message of every chat request routed to this node,
+            and to this node only. Fallback to another provider uses that provider&apos;s prompt instead.
+          </p>
+        </div>
         <div className="flex gap-2">
           <Input
             label="API Key (for Check)"
@@ -179,6 +195,7 @@ EditCompatibleNodeModal.propTypes = {
     baseUrl: PropTypes.string,
     headers: PropTypes.object,
   }),
+  systemPrompt: PropTypes.string,
   onSave: PropTypes.func.isRequired,
   onClose: PropTypes.func.isRequired,
   isAnthropic: PropTypes.bool,
