@@ -12,17 +12,21 @@
    Brand orange (dark) / soft coral (light), neutral warm bases
    ============================================================ */
 :root {
-  /* Brand scale (light) - centered on #E56A4A */
-  --color-brand-50: #fdf1ed;
-  --color-brand-100: #fadccf;
-  --color-brand-200: #f4b59c;
-  --color-brand-300: #ee8d6a;
-  --color-brand-400: #ea7855;
-  --color-brand-500: #E56A4A;
-  --color-brand-600: #cc5236;
-  --color-brand-700: #a64027;
-  --color-brand-800: #7a2f1d;
-  --color-brand-900: #4d1e12;
+  /* Brand scale — constant hue 35.654 (brand-500's own hue), even lightness steps,
+     chroma held at 72% of each step's sRGB gamut maximum. The previous hex ramp
+     drifted 10.5° of hue (34.4→44.9) and its L gaps ran 0.029–0.107, so 400/500/600
+     were nearly indistinguishable while 800→900 jumped. brand-500 is pinned to the
+     exact brand colour #E56A4A. */
+  --color-brand-50: oklch(0.97 0.011 35.654);
+  --color-brand-100: oklch(0.909 0.034 35.654);
+  --color-brand-200: oklch(0.849 0.061 35.654);
+  --color-brand-300: oklch(0.788 0.09 35.654);
+  --color-brand-400: oklch(0.728 0.123 35.654);
+  --color-brand-500: oklch(0.667 0.161 35.654);
+  --color-brand-600: oklch(0.573 0.143 35.654);
+  --color-brand-700: oklch(0.479 0.119 35.654);
+  --color-brand-800: oklch(0.384 0.096 35.654);
+  --color-brand-900: oklch(0.29 0.073 35.654);
 
   /* Primary (legacy alias for backward compat with existing components) */
   --color-primary: var(--color-brand-500);
@@ -42,7 +46,7 @@
   /* Surfaces & backgrounds (light) */
   --color-bg: oklch(98.6% var(--neutral-c-bg) var(--neutral-h));
   --color-bg-alt: oklch(96.6% var(--neutral-c-bg) var(--neutral-h));
-  --color-surface: #ffffff;
+  --color-surface: oklch(1 0 0);
   --color-surface-2: oklch(96.4% var(--neutral-c-bg) var(--neutral-h));
   --color-surface-3: oklch(93.0% var(--neutral-c-bg) var(--neutral-h));
   --color-sidebar: oklch(96.6% var(--neutral-c-bg) var(--neutral-h) / 0.85);
@@ -55,13 +59,15 @@
   --color-text: oklch(19% 0.004 var(--neutral-h));
   --color-text-main: var(--color-text);
   --color-text-muted: oklch(55% var(--neutral-c-ink) var(--neutral-h));
-  --color-text-subtle: oklch(71% 0.006 var(--neutral-h));
+  --color-text-subtle: oklch(62.7% 0.006 var(--neutral-h));   /* APCA Lc 47.5 -> 60.1 on --color-bg */
 
-  /* Status */
-  --color-danger: #cf222e;
-  --color-success: #10B981;
-  --color-warning: #F59E0B;
-  --color-info: #3B82F6;
+  /* Status — hue held exactly, L solved so each reaches APCA Lc 60 as text on its own
+     bg-<status>/15 chip (the actual usage), chroma at 90% of the gamut max for that L.
+     Amber cannot be legible as text at its vivid lightness; ochre is the honest result. */
+  --color-danger: oklch(0.521 0.19 24.525);
+  --color-success: oklch(0.516 0.101 162.48);
+  --color-warning: oklch(0.531 0.104 70.08);
+  --color-info: oklch(0.526 0.191 259.815);
 
   /* Radius — locked to the 4px spacing scale so curves are never arbitrary.
      Shell geometry uses these directly via var(); component radii keep the brand aliases. */
@@ -89,20 +95,24 @@
 }
 
 .dark {
-  /* Brand scale (dark) - centered on #E56A4A, same as light for consistency */
-  --color-brand-50: #fdf1ed;
-  --color-brand-100: #fadccf;
-  --color-brand-200: #f4b59c;
-  --color-brand-300: #ee8d6a;
-  --color-brand-400: #ea7855;
-  --color-brand-500: #E56A4A;
-  --color-brand-600: #cc5236;
-  --color-brand-700: #a64027;
-  --color-brand-800: #7a2f1d;
-  --color-brand-900: #4d1e12;
+  /* Brand scale (dark) — identical ramp to light; only the semantic mappings differ. */
+  --color-brand-50: oklch(0.97 0.011 35.654);
+  --color-brand-100: oklch(0.909 0.034 35.654);
+  --color-brand-200: oklch(0.849 0.061 35.654);
+  --color-brand-300: oklch(0.788 0.09 35.654);
+  --color-brand-400: oklch(0.728 0.123 35.654);
+  --color-brand-500: oklch(0.667 0.161 35.654);
+  --color-brand-600: oklch(0.573 0.143 35.654);
+  --color-brand-700: oklch(0.479 0.119 35.654);
+  --color-brand-800: oklch(0.384 0.096 35.654);
+  --color-brand-900: oklch(0.29 0.073 35.654);
 
-  --color-primary: #E56A4A;
-  --color-primary-hover: #cc5236;
+  /* Held at brand-500: it is both the filled-button ground (white text, Lc 64.4 — passes)
+     and the accent text tone (on --color-bg, Lc 41.4 — fails). Lifting L to 0.776 flips
+     that: text reaches Lc 60.0 but white-on-fill drops to 45.5. No single value serves
+     both roles; splitting them is a 24-call-site change, so it is left as a decision. */
+  --color-primary: var(--color-brand-500);
+  --color-primary-hover: var(--color-brand-600);
 
   /* Surfaces (dark) — same single-hue rule, lower chroma so it stays near-achromatic.
      Fixes the two blue-grey text tokens (H 261-264) that clashed with a neutral ground. */
@@ -121,13 +131,14 @@
 
   --color-text: oklch(94.6% 0.002 var(--neutral-h));
   --color-text-main: var(--color-text);
-  --color-text-muted: oklch(71.0% var(--neutral-c-ink) var(--neutral-h));
-  --color-text-subtle: oklch(55.0% var(--neutral-c-ink) var(--neutral-h));
+  --color-text-muted: oklch(77.8% var(--neutral-c-ink) var(--neutral-h));   /* APCA Lc 50.2 -> 60.0 on --color-surface, the lightest ground it sits on */
+  --color-text-subtle: oklch(67.8% var(--neutral-c-ink) var(--neutral-h));  /* APCA Lc 26.7 -> 45.1 (large-text tier) */
 
-  --color-danger: #ef4444;
-  --color-success: #22c55e;
-  --color-warning: #fbbf24;
-  --color-info: #60a5fa;
+  /* Status — same rule as light, solved upward because the ground is dark. */
+  --color-danger: oklch(0.802 0.102 25.331);
+  --color-success: oklch(0.767 0.192 149.579);
+  --color-warning: oklch(0.837 0.155 84.429);
+  --color-info: oklch(0.793 0.096 254.624);
 
   --shadow-soft: 0 1px 2px 0 rgba(0,0,0,0.3);
   --shadow-warm: 0 2px 12px -2px rgba(229, 106, 74, 0.25);
