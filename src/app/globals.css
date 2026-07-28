@@ -28,23 +28,34 @@
   --color-primary: var(--color-brand-500);
   --color-primary-hover: var(--color-brand-600);
 
+  /* ── Neutral ramp ──────────────────────────────────────────────────────────
+     Every neutral shares ONE hue and steps only in lightness. The old palette
+     mixed warm cream grounds (H 75) with Tailwind zinc (H 286) and blue-grey
+     text (H 264, chroma .023) — a 210° hue spread across surfaces that touch,
+     which is what read as muddy. Change --neutral-h and the whole set follows;
+     that is the only knob, so the families cannot drift apart again.
+     Set --neutral-c-* to 0 for a fully achromatic shell.                      */
+  --neutral-h: 75;      /* warm, matched to the coral brand */
+  --neutral-c-bg: 0.005;
+  --neutral-c-ink: 0.008;
+
   /* Surfaces & backgrounds (light) */
-  --color-bg: #FDFAF6;
-  --color-bg-alt: #F7F3EE;
+  --color-bg: oklch(98.6% var(--neutral-c-bg) var(--neutral-h));
+  --color-bg-alt: oklch(96.6% var(--neutral-c-bg) var(--neutral-h));
   --color-surface: #ffffff;
-  --color-surface-2: #f4f4f5;
-  --color-surface-3: #e7e7e9;
-  --color-sidebar: rgba(244, 241, 236, 0.85);
+  --color-surface-2: oklch(96.4% var(--neutral-c-bg) var(--neutral-h));
+  --color-surface-3: oklch(93.0% var(--neutral-c-bg) var(--neutral-h));
+  --color-sidebar: oklch(96.6% var(--neutral-c-bg) var(--neutral-h) / 0.85);
 
   /* Borders */
-  --color-border: #e5e7eb;
-  --color-border-subtle: #f1f1f3;
+  --color-border: oklch(92.4% var(--neutral-c-bg) var(--neutral-h));
+  --color-border-subtle: oklch(95.8% var(--neutral-c-bg) var(--neutral-h));
 
   /* Text */
-  --color-text: #0a0a0a;
-  --color-text-main: #0a0a0a;
-  --color-text-muted: #6B7280;
-  --color-text-subtle: #9CA3AF;
+  --color-text: oklch(19% 0.004 var(--neutral-h));
+  --color-text-main: var(--color-text);
+  --color-text-muted: oklch(55% var(--neutral-c-ink) var(--neutral-h));
+  --color-text-subtle: oklch(71% 0.006 var(--neutral-h));
 
   /* Status */
   --color-danger: #cf222e;
@@ -93,21 +104,25 @@
   --color-primary: #E56A4A;
   --color-primary-hover: #cc5236;
 
-  /* Surfaces (dark - Claude-like neutral warm) */
-  --color-bg: #1a1a1a;
-  --color-bg-alt: #1F1F1E;
-  --color-surface: #262626;
-  --color-surface-2: #303030;
-  --color-surface-3: #3a3a3a;
-  --color-sidebar: rgba(30, 30, 30, 0.85);
+  /* Surfaces (dark) — same single-hue rule, lower chroma so it stays near-achromatic.
+     Fixes the two blue-grey text tokens (H 261-264) that clashed with a neutral ground. */
+  --neutral-c-bg: 0.003;
+  --neutral-c-ink: 0.006;
 
-  --color-border: #333333;
-  --color-border-subtle: #2a2a2a;
+  --color-bg: oklch(21.8% var(--neutral-c-bg) var(--neutral-h));
+  --color-bg-alt: oklch(24.5% var(--neutral-c-bg) var(--neutral-h));
+  --color-surface: oklch(27.0% var(--neutral-c-bg) var(--neutral-h));
+  --color-surface-2: oklch(31.0% var(--neutral-c-bg) var(--neutral-h));
+  --color-surface-3: oklch(35.0% var(--neutral-c-bg) var(--neutral-h));
+  --color-sidebar: oklch(24.5% var(--neutral-c-bg) var(--neutral-h) / 0.85);
 
-  --color-text: #ededed;
-  --color-text-main: #ededed;
-  --color-text-muted: #9ca3af;
-  --color-text-subtle: #6b7280;
+  --color-border: oklch(32.0% var(--neutral-c-bg) var(--neutral-h));
+  --color-border-subtle: oklch(28.5% var(--neutral-c-bg) var(--neutral-h));
+
+  --color-text: oklch(94.6% 0.002 var(--neutral-h));
+  --color-text-main: var(--color-text);
+  --color-text-muted: oklch(71.0% var(--neutral-c-ink) var(--neutral-h));
+  --color-text-subtle: oklch(55.0% var(--neutral-c-ink) var(--neutral-h));
 
   --color-danger: #ef4444;
   --color-success: #22c55e;
