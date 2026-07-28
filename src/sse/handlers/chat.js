@@ -233,6 +233,7 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
     // Per-provider system prompt, keyed by exact provider id so combo/account
     // fallback to a different provider picks up that provider's prompt instead.
     const providerSystemPrompt = (chatSettings.providerSystemPrompt || {})[provider] || null;
+    const providerSystemPromptVars = (chatSettings.providerSystemPromptVars || {})[provider] || null;
     const result = await handleChatCore({
       body: { ...body, model: `${provider}/${model}` },
       modelInfo: { provider, model },
@@ -259,6 +260,7 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
       onPxpipeEvent: appendPxpipeEvent,
       providerThinking,
       providerSystemPrompt,
+      providerSystemPromptVars,
       // Detect source format by endpoint + body
       sourceFormatOverride: request?.url ? detectFormatByEndpoint(new URL(request.url).pathname, body) : null,
       onCredentialsRefreshed: async (newCreds) => {

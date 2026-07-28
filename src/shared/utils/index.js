@@ -39,8 +39,9 @@ export function getRelativeTime(isoDate) {
   return `${days}d ago`;
 }
 
-// RFC 7230 field-name token characters.
-const HEADER_NAME_RE = /^[A-Za-z0-9!#$%&'*+.^_`|~-]+$/;
+// RFC 7230 token characters. Strict enough for header names, permissive enough
+// for template variable names (dots included, so "flags.Enabled" parses).
+const KEY_NAME_RE = /^[A-Za-z0-9!#$%&'*+.^_`|~-]+$/;
 
 const hasControlChars = (s) => [...s].some((c) => {
   const code = c.charCodeAt(0);
@@ -48,34 +49,34 @@ const hasControlChars = (s) => [...s].some((c) => {
 });
 
 /**
- * Parse "Name: Value" lines into a header object.
- * Blank lines and #-comments are skipped. Malformed names and control
- * characters in values are rejected (header-injection guard).
+ * Parse "Name: Value" lines into an object. Blank lines and #-comments are
+ * skipped. Malformed names and control characters in values are rejected — the
+ * latter is a header-injection guard when this feeds outbound HTTP headers.
  * @param {string} text - Raw textarea content
- * @returns {{ headers?: Object, error?: string }}
+ * @returns {{ entries?: Object, error?: string }}
  */
-export function parseHeaderLines(text) {
-  if (!text || !text.trim()) return { headers: {} };
-  const headers = {};
+export function parseKeyValueLines(text) {
+  if (!text || !text.trim()) return { entries: {} };
+  const entries = {};
   for (const raw of text.split("\n")) {
     const line = raw.trim();
     if (!line || line.startsWith("#")) continue;
     const sep = line.indexOf(":");
-    if (sep < 1) return { error: `Invalid header line "${line}" - expected "Name: Value"` };
+    if (sep < 1) return { error: `Invalid line "${line}" - expected "Name: Value"` };
     const name = line.slice(0, sep).trim();
     const value = line.slice(sep + 1).trim();
-    if (!HEADER_NAME_RE.test(name)) return { error: `Invalid header name "${name}"` };
+    if (!KEY_NAME_RE.test(name)) return { error: `Invalid name "${name}"` };
     if (hasControlChars(value)) return { error: `Invalid characters in value for "${name}"` };
-    headers[name] = value;
+    entries[name] = value;
   }
-  return { headers };
+  return { entries };
 }
 
 /**
- * Render a stored header object back to editable "Name: Value" lines.
- * @param {Object} headers - Header map
+ * Render a stored map back to editable "Name: Value" lines.
+ * @param {Object} entries - Key/value map
  * @returns {string} One "Name: Value" per line
  */
-export function formatHeaderLines(headers) {
-  return Object.entries(headers || {}).map(([k, v]) => `${k}: ${v}`).join("\n");
+export function formatKeyValueLines(entries) {
+  return Object.entries(entries || {}).map(([k, v]) => `${k}: ${v}`).join("\n");
 }

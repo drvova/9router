@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { deleteProviderConnectionsByProvider, deleteProviderNode, getProviderConnections, getProviderNodeById, updateProviderConnection, updateProviderNode } from "@/models";
-import { parseHeaderLines } from "@/shared/utils";
+import { parseKeyValueLines } from "@/shared/utils";
 
 // PUT /api/provider-nodes/[id] - Update provider node
 export async function PUT(request, { params }) {
@@ -49,7 +49,7 @@ export async function PUT(request, { params }) {
       }
     }
 
-    const { headers, error: headersError } = parseHeaderLines(headersText);
+    const { entries: headers, error: headersError } = parseKeyValueLines(headersText);
     if (headersError) {
       return NextResponse.json({ error: headersError }, { status: 400 });
     }

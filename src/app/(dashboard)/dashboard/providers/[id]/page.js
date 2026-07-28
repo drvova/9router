@@ -20,6 +20,7 @@ import CompatibleModelsSection from "./CompatibleModelsSection";
 import ConnectionRow from "./ConnectionRow";
 import AddApiKeyModal from "./AddApiKeyModal";
 import EditCompatibleNodeModal from "./EditCompatibleNodeModal";
+import { formatKeyValueLines, parseKeyValueLines } from "@/shared/utils";
 import AddCustomModelModal from "./AddCustomModelModal";
 import BulkImportCodexModal from "./BulkImportCodexModal";
 
@@ -67,6 +68,8 @@ export default function ProviderDetailPage() {
   const [savedSystemPrompt, setSavedSystemPrompt] = useState("");
   const [systemPromptSaving, setSystemPromptSaving] = useState(false);
   const [systemPromptError, setSystemPromptError] = useState(null);
+  const [systemPromptVars, setSystemPromptVars] = useState("");
+  const [savedSystemPromptVars, setSavedSystemPromptVars] = useState("");
   const [providerStickyLimit, setProviderStickyLimit] = useState("");
   const [thinkingMode, setThinkingMode] = useState("auto");
   const [autoPing, setAutoPing] = useState({ enabled: false, connections: {} });
@@ -323,6 +326,9 @@ export default function ProviderDetailPage() {
       const storedPrompt = (settingsData.providerSystemPrompt || {})[providerId] || "";
       setSystemPrompt(storedPrompt);
       setSavedSystemPrompt(storedPrompt);
+      const storedVars = formatKeyValueLines((settingsData.providerSystemPromptVars || {})[providerId]);
+      setSystemPromptVars(storedVars);
+      setSavedSystemPromptVars(storedVars);
       const autoPingSettingsKey = AUTO_PING_SETTINGS_KEYS[providerId];
       const apCfg = autoPingSettingsKey ? settingsData[autoPingSettingsKey] || {} : {};
       setAutoPing({ enabled: apCfg.enabled === true, connections: apCfg.connections || {} });
@@ -351,7 +357,7 @@ export default function ProviderDetailPage() {
     }
   }, [providerId, isCompatible]);
 
-  const handleUpdateNode = async ({ systemPrompt: nextSystemPrompt, ...nodeFields }) => {
+  const handleUpdateNode = async ({ systemPrompt: nextSystemPrompt, systemPromptVars: nextSystemPromptVars, ...nodeFields }) => {
     const res = await fetch(`/api/provider-nodes/${providerId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -361,7 +367,7 @@ export default function ProviderDetailPage() {
     if (!res.ok) throw new Error(data.error || "Failed to update provider node");
     // The system prompt is not a node field — it lives in settings under the same
     // key the System Prompt card writes, so both editors stay on one source of truth.
-    if (nextSystemPrompt !== undefined) await persistSystemPrompt(nextSystemPrompt);
+    if (nextSystemPrompt !== undefined) await persistSystemPrompt(nextSystemPrompt, nextSystemPromptVars);
     setProviderNode(data.node);
     await fetchConnections();
     setShowEditNodeModal(false);
@@ -412,30 +418,44 @@ export default function ProviderDetailPage() {
 
   // Single write path for the per-provider system prompt, shared by the card below
   // and the compatible-node edit modal. Throws so each caller surfaces its own error.
-  const persistSystemPrompt = async (value) => {
+  const persistSystemPrompt = async (value, varsText) => {
+    const { entries: vars, error: varsError } = parseKeyValueLines(varsText);
+    if (varsError) throw new Error(varsError);
+
     const settingsRes = await fetch("/api/settings", { cache: "no-store" });
     if (!settingsRes.ok) throw new Error("Failed to read settings");
     const settingsData = await settingsRes.json();
-    const updated = { ...(settingsData.providerSystemPrompt || {}) };
+
+    const prompts = { ...(settingsData.providerSystemPrompt || {}) };
+    const varMaps = { ...(settingsData.providerSystemPromptVars || {}) };
     const trimmed = (value || "").trim();
-    if (trimmed) updated[providerId] = trimmed;
-    else delete updated[providerId];
+    if (trimmed) prompts[providerId] = trimmed;
+    else delete prompts[providerId];
+    if (Object.keys(vars).length) varMaps[providerId] = vars;
+    else delete varMaps[providerId];
 
     const res = await fetch("/api/settings", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ providerSystemPrompt: updated }),
+      body: JSON.stringify({ providerSystemPrompt: prompts, providerSystemPromptVars: varMaps }),
     });
     if (!res.ok) throw new Error("Failed to save system prompt");
+
+    const normalizedVars = formatKeyValueLines(vars);
     setSystemPrompt(trimmed);
     setSavedSystemPrompt(trimmed);
+    setSystemPromptVars(normalizedVars);
+    setSavedSystemPromptVars(normalizedVars);
   };
+
+  const systemPromptDirty =
+    systemPrompt.trim() !== savedSystemPrompt || systemPromptVars.trim() !== savedSystemPromptVars;
 
   const saveSystemPrompt = async () => {
     setSystemPromptSaving(true);
     setSystemPromptError(null);
     try {
-      await persistSystemPrompt(systemPrompt);
+      await persistSystemPrompt(systemPrompt, systemPromptVars);
     } catch (error) {
       setSystemPromptError(error.message);
     } finally {
@@ -1682,7 +1702,9 @@ export default function ProviderDetailPage() {
           <p className="text-xs text-text-muted">
             Appended to the system message of every chat request routed to this provider, and to
             this provider only. On combo or account fallback the next provider uses its own prompt
-            instead of this one.
+            instead of this one. Rendered as a Jinja template per request, so{" "}
+            <code>{"{{ model }}"}</code> and <code>{"{% if %}"}</code> work; a template error falls
+            back to the raw text rather than failing the request.
           </p>
         </div>
         <textarea
@@ -1691,30 +1713,36 @@ export default function ProviderDetailPage() {
           value={systemPrompt}
           onChange={(e) => setSystemPrompt(e.target.value)}
         />
+        <div className="mt-4 flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-text-main">Variables</label>
+          <textarea
+            className="w-full rounded-[10px] border border-transparent bg-surface-2 p-2 text-sm font-mono resize-y min-h-[80px] text-text-main placeholder-text-muted/70 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+            placeholder={"productName: WorkBuddy\ndataFolderName: .workbuddy\nproductFeatures.DisableMultimodalGeneration: false"}
+            value={systemPromptVars}
+            onChange={(e) => setSystemPromptVars(e.target.value)}
+          />
+          <p className="text-xs text-text-muted">
+            Optional. One <code>Name: Value</code> per line, available to the prompt as <code>{"{{ Name }}"}</code>. Dotted names nest, so <code>flags.Enabled: false</code> satisfies <code>{"{% if not flags.Enabled %}"}</code>. <code>true</code>/<code>false</code>/numbers are coerced. Built-ins: <code>provider alias model modelName format connection date time datetime</code> — your names win on clash.
+          </p>
+        </div>
         {systemPromptError && (
           <p className="mt-2 text-xs text-red-500">{systemPromptError}</p>
         )}
         <div className="mt-3 flex items-center gap-2">
-          <Button
-            size="sm"
-            onClick={saveSystemPrompt}
-            disabled={systemPromptSaving || systemPrompt.trim() === savedSystemPrompt}
-          >
+          <Button size="sm" onClick={saveSystemPrompt} disabled={systemPromptSaving || !systemPromptDirty}>
             {systemPromptSaving ? "Saving..." : "Save"}
           </Button>
-          {savedSystemPrompt && (
+          {(savedSystemPrompt || savedSystemPromptVars) && (
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => setSystemPrompt("")}
-              disabled={systemPromptSaving || !systemPrompt}
+              onClick={() => { setSystemPrompt(""); setSystemPromptVars(""); }}
+              disabled={systemPromptSaving || (!systemPrompt && !systemPromptVars)}
             >
               Clear
             </Button>
           )}
-          {systemPrompt.trim() !== savedSystemPrompt && (
-            <span className="text-xs text-text-muted">Unsaved changes</span>
-          )}
+          {systemPromptDirty && <span className="text-xs text-text-muted">Unsaved changes</span>}
         </div>
       </Card>
 
@@ -1836,6 +1864,7 @@ export default function ProviderDetailPage() {
           isOpen={showEditNodeModal}
           node={providerNode}
           systemPrompt={savedSystemPrompt}
+          systemPromptVars={savedSystemPromptVars}
           onSave={handleUpdateNode}
           onClose={() => setShowEditNodeModal(false)}
           isAnthropic={isAnthropicCompatible}

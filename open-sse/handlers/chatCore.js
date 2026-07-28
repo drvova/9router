@@ -22,6 +22,7 @@ import { detectClientTool, isNativePassthrough } from "../utils/clientDetector.j
 import { dedupeTools } from "../utils/toolDeduper.js";
 import { injectCaveman } from "../rtk/caveman.js";
 import { injectSystemPrompt } from "../rtk/systemInject.js";
+import { renderPromptTemplate, buildPromptContext, buildRuntimeVars } from "../rtk/promptTemplate.js";
 import { injectPonytail } from "../rtk/ponytail.js";
 import { compressMessages, formatRtkLog } from "../rtk/index.js";
 import { compressWithHeadroom, formatHeadroomLog, formatHeadroomSizeLog, isHeadroomPhantomSavings } from "../rtk/headroom.js";
@@ -39,7 +40,7 @@ import { resolveSessionId } from "../utils/sessionManager.js";
  * @param {object} options.credentials - Provider credentials
  * @param {string} options.sourceFormatOverride - Override detected source format (e.g. "openai-responses")
  */
-export async function handleChatCore({ body, modelInfo, credentials, log, onCredentialsRefreshed, onRequestSuccess, onDisconnect, clientRawRequest, connectionId, userAgent, apiKey, ccFilterNaming, rtkEnabled, headroomEnabled, headroomUrl, headroomCompressUserMessages, cavemanEnabled, cavemanLevel, ponytailEnabled, ponytailLevel, pxpipeEnabled, pxpipeMinChars, pxpipeTimeoutMs, pxpipeTransform, onPxpipeEvent, sourceFormatOverride, providerThinking, providerSystemPrompt }) {
+export async function handleChatCore({ body, modelInfo, credentials, log, onCredentialsRefreshed, onRequestSuccess, onDisconnect, clientRawRequest, connectionId, userAgent, apiKey, ccFilterNaming, rtkEnabled, headroomEnabled, headroomUrl, headroomCompressUserMessages, cavemanEnabled, cavemanLevel, ponytailEnabled, ponytailLevel, pxpipeEnabled, pxpipeMinChars, pxpipeTimeoutMs, pxpipeTransform, onPxpipeEvent, sourceFormatOverride, providerThinking, providerSystemPrompt, providerSystemPromptVars }) {
   const { provider, model } = modelInfo;
   const requestStartTime = Date.now();
   // Stable per-session color so all lines of one CLI conversation share a tag
@@ -217,8 +218,14 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
   // Per-provider system prompt: scoped to this provider only. Injected before the
   // token-saver prompts so those keep the last word on style. Copy-on-write, so a
   // fallback to another provider never carries this provider's text.
+  // Rendered as a Jinja template per attempt, so {{ model }} and friends reflect
+  // the provider actually being tried rather than the one the client asked for.
   if (providerSystemPrompt) {
-    translatedBody = injectSystemPrompt(translatedBody, finalFormat, providerSystemPrompt);
+    const promptContext = buildPromptContext(providerSystemPromptVars, buildRuntimeVars({
+      provider, alias, model, format: finalFormat, connection: credentials?.connectionName,
+    }));
+    const renderedPrompt = renderPromptTemplate(providerSystemPrompt, promptContext, log);
+    translatedBody = injectSystemPrompt(translatedBody, finalFormat, renderedPrompt);
     xf.push("SYSPROMPT");
   }
 

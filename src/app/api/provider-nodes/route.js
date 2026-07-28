@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createProviderNode, getProviderNodes } from "@/models";
 import { OPENAI_COMPATIBLE_PREFIX, ANTHROPIC_COMPATIBLE_PREFIX, CUSTOM_EMBEDDING_PREFIX } from "@/shared/constants/providers";
-import { generateId, parseHeaderLines } from "@/shared/utils";
+import { generateId, parseKeyValueLines } from "@/shared/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +45,7 @@ export async function POST(request) {
     // Determine type
     const nodeType = type || "openai-compatible";
 
-    const { headers, error: headersError } = parseHeaderLines(headersText);
+    const { entries: headers, error: headersError } = parseKeyValueLines(headersText);
     if (headersError) {
       return NextResponse.json({ error: headersError }, { status: 400 });
     }

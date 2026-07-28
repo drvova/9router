@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import { Button, Badge, Input, Modal, Select } from "@/shared/components";
-import { formatHeaderLines } from "@/shared/utils";
+import { formatKeyValueLines } from "@/shared/utils";
 
-export default function EditCompatibleNodeModal({ isOpen, node, systemPrompt = "", onSave, onClose, isAnthropic }) {
+export default function EditCompatibleNodeModal({ isOpen, node, systemPrompt = "", systemPromptVars = "", onSave, onClose, isAnthropic }) {
   const [formData, setFormData] = useState({
     name: "",
     prefix: "",
@@ -13,6 +13,7 @@ export default function EditCompatibleNodeModal({ isOpen, node, systemPrompt = "
     baseUrl: "https://api.openai.com/v1",
     headers: "",
     systemPrompt: "",
+    systemPromptVars: "",
   });
   const [saving, setSaving] = useState(false);
   const [checkKey, setCheckKey] = useState("");
@@ -28,11 +29,12 @@ export default function EditCompatibleNodeModal({ isOpen, node, systemPrompt = "
         prefix: node.prefix || "",
         apiType: node.apiType || "chat",
         baseUrl: node.baseUrl || (isAnthropic ? "https://api.anthropic.com/v1" : "https://api.openai.com/v1"),
-        headers: formatHeaderLines(node.headers),
+        headers: formatKeyValueLines(node.headers),
         systemPrompt,
+        systemPromptVars,
       });
     }
-  }, [node, isAnthropic, systemPrompt]);
+  }, [node, isAnthropic, systemPrompt, systemPromptVars]);
 
   const apiTypeOptions = [
     { value: "chat", label: "Chat Completions" },
@@ -50,6 +52,7 @@ export default function EditCompatibleNodeModal({ isOpen, node, systemPrompt = "
         baseUrl: formData.baseUrl,
         headers: formData.headers,
         systemPrompt: formData.systemPrompt,
+        systemPromptVars: formData.systemPromptVars,
       };
       if (!isAnthropic) {
         payload.apiType = formData.apiType;
@@ -141,6 +144,19 @@ export default function EditCompatibleNodeModal({ isOpen, node, systemPrompt = "
           <p className="text-xs text-text-muted">
             Optional. Appended to the system message of every chat request routed to this node,
             and to this node only. Fallback to another provider uses that provider&apos;s prompt instead.
+            Rendered as a Jinja template, so <code>{"{{ model }}"}</code> and <code>{"{% if %}"}</code> work.
+          </p>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-text-main">Variables</label>
+          <textarea
+            className="w-full rounded-[10px] border border-transparent bg-surface-2 p-2 text-sm font-mono resize-y min-h-[80px] text-text-main placeholder-text-muted/70 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+            placeholder={"productName: WorkBuddy\ndataFolderName: .workbuddy\nproductFeatures.DisableMultimodalGeneration: false"}
+            value={formData.systemPromptVars}
+            onChange={(e) => setFormData({ ...formData, systemPromptVars: e.target.value })}
+          />
+          <p className="text-xs text-text-muted">
+            Optional. One <code>Name: Value</code> per line, available to the prompt as <code>{"{{ Name }}"}</code>. Dotted names nest, so <code>flags.Enabled: false</code> satisfies <code>{"{% if not flags.Enabled %}"}</code>. <code>true</code>/<code>false</code>/numbers are coerced. Built-ins: <code>provider alias model modelName format connection date time datetime</code> — your names win on clash.
           </p>
         </div>
         <div className="flex gap-2">
@@ -196,6 +212,7 @@ EditCompatibleNodeModal.propTypes = {
     headers: PropTypes.object,
   }),
   systemPrompt: PropTypes.string,
+  systemPromptVars: PropTypes.string,
   onSave: PropTypes.func.isRequired,
   onClose: PropTypes.func.isRequired,
   isAnthropic: PropTypes.bool,
