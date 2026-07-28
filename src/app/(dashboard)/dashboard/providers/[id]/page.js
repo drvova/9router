@@ -63,6 +63,10 @@ export default function ProviderDetailPage() {
   const [bulkProxyPoolId, setBulkProxyPoolId] = useState("__none__");
   const [bulkUpdatingProxy, setBulkUpdatingProxy] = useState(false);
   const [providerStrategy, setProviderStrategy] = useState(null);
+  const [systemPrompt, setSystemPrompt] = useState("");
+  const [savedSystemPrompt, setSavedSystemPrompt] = useState("");
+  const [systemPromptSaving, setSystemPromptSaving] = useState(false);
+  const [systemPromptError, setSystemPromptError] = useState(null);
   const [providerStickyLimit, setProviderStickyLimit] = useState("");
   const [thinkingMode, setThinkingMode] = useState("auto");
   const [autoPing, setAutoPing] = useState({ enabled: false, connections: {} });
@@ -315,6 +319,10 @@ export default function ProviderDetailPage() {
       // Load per-provider thinking config
       const thinkingCfg = (settingsData.providerThinking || {})[providerId] || {};
       setThinkingMode(thinkingCfg.mode || "auto");
+      // Per-provider system prompt
+      const storedPrompt = (settingsData.providerSystemPrompt || {})[providerId] || "";
+      setSystemPrompt(storedPrompt);
+      setSavedSystemPrompt(storedPrompt);
       const autoPingSettingsKey = AUTO_PING_SETTINGS_KEYS[providerId];
       const apCfg = autoPingSettingsKey ? settingsData[autoPingSettingsKey] || {} : {};
       setAutoPing({ enabled: apCfg.enabled === true, connections: apCfg.connections || {} });
@@ -397,6 +405,33 @@ export default function ProviderDetailPage() {
   const handleStickyLimitChange = (value) => {
     setProviderStickyLimit(value);
     saveProviderStrategy("round-robin", value);
+  };
+
+  const saveSystemPrompt = async () => {
+    setSystemPromptSaving(true);
+    setSystemPromptError(null);
+    try {
+      const settingsRes = await fetch("/api/settings", { cache: "no-store" });
+      if (!settingsRes.ok) throw new Error("Failed to read settings");
+      const settingsData = await settingsRes.json();
+      const updated = { ...(settingsData.providerSystemPrompt || {}) };
+      const trimmed = systemPrompt.trim();
+      if (trimmed) updated[providerId] = trimmed;
+      else delete updated[providerId];
+
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ providerSystemPrompt: updated }),
+      });
+      if (!res.ok) throw new Error("Failed to save system prompt");
+      setSystemPrompt(trimmed);
+      setSavedSystemPrompt(trimmed);
+    } catch (error) {
+      setSystemPromptError(error.message);
+    } finally {
+      setSystemPromptSaving(false);
+    }
   };
 
   const saveThinkingConfig = async (mode) => {
@@ -1630,6 +1665,49 @@ export default function ProviderDetailPage() {
           )}
         </Card>
       )}
+
+      {/* Per-provider system prompt */}
+      <Card>
+        <div className="mb-3 flex flex-col gap-1">
+          <h2 className="text-lg font-semibold">System Prompt</h2>
+          <p className="text-xs text-text-muted">
+            Appended to the system message of every chat request routed to this provider, and to
+            this provider only. On combo or account fallback the next provider uses its own prompt
+            instead of this one.
+          </p>
+        </div>
+        <textarea
+          className="w-full rounded-[10px] border border-transparent bg-surface-2 p-2 text-sm resize-y min-h-[100px] text-text-main placeholder-text-muted/70 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+          placeholder="e.g. Always answer in British English. Prefer tables over prose."
+          value={systemPrompt}
+          onChange={(e) => setSystemPrompt(e.target.value)}
+        />
+        {systemPromptError && (
+          <p className="mt-2 text-xs text-red-500">{systemPromptError}</p>
+        )}
+        <div className="mt-3 flex items-center gap-2">
+          <Button
+            size="sm"
+            onClick={saveSystemPrompt}
+            disabled={systemPromptSaving || systemPrompt.trim() === savedSystemPrompt}
+          >
+            {systemPromptSaving ? "Saving..." : "Save"}
+          </Button>
+          {savedSystemPrompt && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setSystemPrompt("")}
+              disabled={systemPromptSaving || !systemPrompt}
+            >
+              Clear
+            </Button>
+          )}
+          {systemPrompt.trim() !== savedSystemPrompt && (
+            <span className="text-xs text-text-muted">Unsaved changes</span>
+          )}
+        </div>
+      </Card>
 
       {/* Models */}
       <Card>

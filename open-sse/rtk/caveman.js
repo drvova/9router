@@ -4,6 +4,7 @@
 import { injectSystemPrompt } from "./systemInject.js";
 import { CAVEMAN_PROMPTS } from "./cavemanPrompts.js";
 
+// Returns a new body; injectSystemPrompt is copy-on-write.
 export function injectCaveman(body, format, level) {
-  injectSystemPrompt(body, format, CAVEMAN_PROMPTS[level]);
+  return injectSystemPrompt(body, format, CAVEMAN_PROMPTS[level]);
 }

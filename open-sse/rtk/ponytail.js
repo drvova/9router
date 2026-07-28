@@ -4,6 +4,7 @@
 import { injectSystemPrompt } from "./systemInject.js";
 import { PONYTAIL_PROMPTS } from "./ponytailPrompt.js";
 
+// Returns a new body; injectSystemPrompt is copy-on-write.
 export function injectPonytail(body, format, level) {
-  injectSystemPrompt(body, format, PONYTAIL_PROMPTS[level]);
+  return injectSystemPrompt(body, format, PONYTAIL_PROMPTS[level]);
 }

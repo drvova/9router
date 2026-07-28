@@ -56,11 +56,11 @@ vi.mock("../../open-sse/utils/toolDeduper.js", () => ({
 }));
 
 vi.mock("../../open-sse/rtk/caveman.js", () => ({
-  injectCaveman: vi.fn(),
+  injectCaveman: vi.fn((body) => body),
 }));
 
 vi.mock("../../open-sse/rtk/ponytail.js", () => ({
-  injectPonytail: vi.fn(),
+  injectPonytail: vi.fn((body) => body),
 }));
 
 vi.mock("../../open-sse/rtk/index.js", () => ({
