@@ -22,6 +22,8 @@ npm run dev                                                          # dev on po
 npm run build && PORT=20128 HOSTNAME=0.0.0.0 npm run start           # production
 ```
 - Bun variants: `npm run dev:bun` / `build:bun` / `start:bun`.
+- **Bundlers.** `dev` uses Turbopack; `build` is pinned to **webpack** on purpose. Turbopack builds ~5x faster (124s → 23s) but does not prune `output: "standalone"` and ignores `outputFileTracingExcludes`, so it copies the whole workspace — measured +127MB on the npm CLI bundle and +45MB on the Docker image, both of which `COPY` that standalone output. Use `npm run build:turbo` for fast local builds (`next start` reads `.next/`, not `standalone/`); leave `build` on webpack for anything that ships an artifact.
+- **Never run a build without `NEXT_DIST_DIR` while a dev server is up.** `next build` rewrites `.next/`, which `next dev` is serving from, and the dev server then 404s routes it hasn't re-registered. `cli/scripts/build-cli.js` already does this correctly (`NEXT_DIST_DIR=.next-cli-build`). Note `npm run <script> --dry-run` is not a thing — npm forwards the flag and runs the build for real.
 - Default runtime port is **20128** (dashboard at `/dashboard`, API at `/v1`).
 - Lint: `npx eslint .` (config `eslint.config.mjs`, extends `eslint-config-next`).
 
