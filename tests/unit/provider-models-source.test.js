@@ -189,3 +189,39 @@ describe("xAI credential routing", () => {
     expect(fetchMock.mock.calls.map((c) => c[0])).not.toContain("https://api.x.ai/v1/models");
   });
 });
+
+describe("upstream rejection detail", () => {
+  let fetchMock;
+
+  beforeEach(() => {
+    refreshTokenByProvider.mockReset();
+    connection.provider = "deepseek";
+    connection.apiKey = "sk-dead-key";
+    delete connection.accessToken;
+    delete connection.refreshToken;
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    connection.provider = "qwen";
+    connection.accessToken = "stale-token";
+    connection.refreshToken = "refresh-token";
+    delete connection.apiKey;
+  });
+
+  it("forwards the provider's message instead of a bare status", async () => {
+    const body = { error: { message: "Authentication Fails, Your api key: ****f6f9 is invalid", type: "authentication_error" } };
+    fetchMock.mockResolvedValue({ ok: false, status: 401, text: async () => JSON.stringify(body), json: async () => body });
+
+    const res = await GET(new Request("http://localhost/api/providers/conn-1/models"), {
+      params: Promise.resolve({ id: "conn-1" }),
+    });
+
+    expect(res.status).toBe(401);
+    expect((await res.json()).error).toBe(
+      "Failed to fetch models (401): Authentication Fails, Your api key: ****f6f9 is invalid"
+    );
+  });
+});

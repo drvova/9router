@@ -23,6 +23,23 @@ const GEMINI_CLI_MODELS_URL = "https://cloudcode-pa.googleapis.com/v1internal:fe
 const CODEX_CLIENT_VERSION = "0.144.6";
 const CODEX_MODELS_URL = `https://chatgpt.com/backend-api/codex/models?client_version=${CODEX_CLIENT_VERSION}`;
 
+// Upstream rejections carry the only actionable detail ("your api key ...f6f9 is invalid",
+// "spending-limit"). Log it and forward a trimmed copy so the dashboard shows the reason
+// instead of a bare status code.
+const formatUpstreamError = (provider, status, errorText) => {
+  console.log(`Error fetching models from ${provider}:`, errorText);
+  let detail = "";
+  try {
+    const parsed = JSON.parse(errorText);
+    const raw = parsed?.error?.message ?? parsed?.error ?? parsed?.message ?? parsed?.detail;
+    detail = typeof raw === "string" ? raw : "";
+  } catch {
+    detail = String(errorText || "").trim();
+  }
+  detail = detail.slice(0, 300);
+  return detail ? `Failed to fetch models (${status}): ${detail}` : `Failed to fetch models: ${status}`;
+};
+
 const parseOpenAIStyleModels = (data) => {
   if (Array.isArray(data)) return data;
   return data?.data || data?.models || data?.results || [];
@@ -273,8 +290,7 @@ const fetchOpenAIStyleCatalog = async (url, apiKey, label) => {
   });
   if (!response.ok) {
     const errorText = await response.text();
-    console.log(`Error fetching models from ${label}:`, errorText);
-    return { error: `Failed to fetch models: ${response.status}`, status: response.status };
+    return { error: formatUpstreamError(label, response.status, errorText), status: response.status };
   }
   return { models: parseOpenAIStyleModels(await response.json()) };
 };
@@ -567,8 +583,7 @@ const PROVIDER_MODELS_CONFIG = {
       });
       if (!response.ok) {
         const errorText = await response.text();
-        console.log("Error fetching models from ollama-local:", errorText);
-        return { error: `Failed to fetch models: ${response.status}`, status: response.status };
+        return { error: formatUpstreamError("ollama-local", response.status, errorText), status: response.status };
       }
       const data = await response.json();
       return { models: parseOpenAIStyleModels(data) };
@@ -604,9 +619,8 @@ export async function GET(request, { params }) {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.log(`Error fetching models from ${connection.provider}:`, errorText);
         return NextResponse.json(
-          { error: `Failed to fetch models: ${response.status}` },
+          { error: formatUpstreamError(connection.provider, response.status, errorText) },
           { status: response.status }
         );
       }
@@ -645,9 +659,8 @@ export async function GET(request, { params }) {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.log(`Error fetching models from ${connection.provider}:`, errorText);
         return NextResponse.json(
-          { error: `Failed to fetch models: ${response.status}` },
+          { error: formatUpstreamError(connection.provider, response.status, errorText) },
           { status: response.status }
         );
       }
@@ -727,9 +740,8 @@ export async function GET(request, { params }) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.log(`Error fetching models from ${connection.provider}:`, errorText);
       return NextResponse.json(
-        { error: `Failed to fetch models: ${response.status}` },
+        { error: formatUpstreamError(connection.provider, response.status, errorText) },
         { status: response.status }
       );
     }
