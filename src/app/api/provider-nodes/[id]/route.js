@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { deleteProviderConnectionsByProvider, deleteProviderNode, getProviderConnections, getProviderNodeById, updateProviderConnection, updateProviderNode } from "@/models";
+import { parseHeaderLines } from "@/shared/utils";
 
 // PUT /api/provider-nodes/[id] - Update provider node
 export async function PUT(request, { params }) {
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, prefix, apiType, baseUrl } = body;
+    const { name, prefix, apiType, baseUrl, headers: headersText } = body;
     const node = await getProviderNodeById(id);
 
     if (!node) {
@@ -48,10 +49,16 @@ export async function PUT(request, { params }) {
       }
     }
 
+    const { headers, error: headersError } = parseHeaderLines(headersText);
+    if (headersError) {
+      return NextResponse.json({ error: headersError }, { status: 400 });
+    }
+
     const updates = {
       name: name.trim(),
       prefix: prefix.trim(),
       baseUrl: sanitizedBaseUrl,
+      headers,
     };
 
     if (node.type === "openai-compatible") {
@@ -68,6 +75,7 @@ export async function PUT(request, { params }) {
           prefix: prefix.trim(),
           apiType: node.type === "openai-compatible" ? apiType : undefined,
           baseUrl: sanitizedBaseUrl,
+          headers,
           nodeName: updated.name,
         }
       })

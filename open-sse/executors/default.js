@@ -203,6 +203,10 @@ export class DefaultExecutor extends BaseExecutor {
     }
 
     if (stream) headers["Accept"] = "text/event-stream";
+    // Per-node custom headers (compatible nodes) applied last — upstreams that gate on
+    // client identity need to override UA/Accept/auth defaults.
+    const custom = credentials?.providerSpecificData?.headers;
+    if (custom) Object.assign(headers, custom);
     return headers;
   }
 

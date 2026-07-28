@@ -15,7 +15,8 @@ export default function createOpenAIEmbeddingAdapter(providerId) {
   return {
     buildUrl: () => embedUrl(providerId),
     buildHeaders: (creds) => {
-      return { "Content-Type": "application/json", ...bearerAuth(creds), ...(cfg.headers || {}) };
+      // Per-node custom headers (custom-embedding nodes) applied last.
+      return { "Content-Type": "application/json", ...bearerAuth(creds), ...(cfg.headers || {}), ...(creds?.providerSpecificData?.headers || {}) };
     },
     buildBody: (model, { input, encoding_format, dimensions }) => {
       const body = { model, input };

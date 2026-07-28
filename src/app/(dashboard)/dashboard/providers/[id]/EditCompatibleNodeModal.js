@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import { Button, Badge, Input, Modal, Select } from "@/shared/components";
+import { formatHeaderLines } from "@/shared/utils";
 
 export default function EditCompatibleNodeModal({ isOpen, node, onSave, onClose, isAnthropic }) {
   const [formData, setFormData] = useState({
@@ -10,12 +11,14 @@ export default function EditCompatibleNodeModal({ isOpen, node, onSave, onClose,
     prefix: "",
     apiType: "chat",
     baseUrl: "https://api.openai.com/v1",
+    headers: "",
   });
   const [saving, setSaving] = useState(false);
   const [checkKey, setCheckKey] = useState("");
   const [checkModelId, setCheckModelId] = useState("");
   const [validating, setValidating] = useState(false);
   const [validationResult, setValidationResult] = useState(null);
+  const [saveError, setSaveError] = useState(null);
 
   useEffect(() => {
     if (node) {
@@ -24,6 +27,7 @@ export default function EditCompatibleNodeModal({ isOpen, node, onSave, onClose,
         prefix: node.prefix || "",
         apiType: node.apiType || "chat",
         baseUrl: node.baseUrl || (isAnthropic ? "https://api.anthropic.com/v1" : "https://api.openai.com/v1"),
+        headers: formatHeaderLines(node.headers),
       });
     }
   }, [node, isAnthropic]);
@@ -36,16 +40,20 @@ export default function EditCompatibleNodeModal({ isOpen, node, onSave, onClose,
   const handleSubmit = async () => {
     if (!formData.name.trim() || !formData.prefix.trim() || !formData.baseUrl.trim()) return;
     setSaving(true);
+    setSaveError(null);
     try {
       const payload = {
         name: formData.name,
         prefix: formData.prefix,
         baseUrl: formData.baseUrl,
+        headers: formData.headers,
       };
       if (!isAnthropic) {
         payload.apiType = formData.apiType;
       }
       await onSave(payload);
+    } catch (error) {
+      setSaveError(error.message);
     } finally {
       setSaving(false);
     }
@@ -107,6 +115,18 @@ export default function EditCompatibleNodeModal({ isOpen, node, onSave, onClose,
           placeholder={isAnthropic ? "https://api.anthropic.com/v1" : "https://api.openai.com/v1"}
           hint={`Use the base URL (ending in /v1) for your ${isAnthropic ? "Anthropic" : "OpenAI"}-compatible API.`}
         />
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-text-main">Custom Headers</label>
+          <textarea
+            className="w-full rounded-[10px] border border-transparent bg-surface-2 p-2 text-sm font-mono resize-y min-h-[80px] text-text-main placeholder-text-muted/70 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+            placeholder={"User-Agent: MyClient/1.0\nX-Client-Name: my-client"}
+            value={formData.headers}
+            onChange={(e) => setFormData({ ...formData, headers: e.target.value })}
+          />
+          <p className="text-xs text-text-muted">
+            Optional. One <code>Name: Value</code> per line. Sent on every request and applied last, so these override the defaults (including Authorization). Use for upstreams that gate on client identity.
+          </p>
+        </div>
         <div className="flex gap-2">
           <Input
             label="API Key (for Check)"
@@ -133,6 +153,9 @@ export default function EditCompatibleNodeModal({ isOpen, node, onSave, onClose,
             {validationResult === "success" ? "Valid" : "Invalid"}
           </Badge>
         )}
+        {saveError && (
+          <p className="text-xs text-red-500">{saveError}</p>
+        )}
         <div className="flex gap-2">
           <Button onClick={handleSubmit} fullWidth disabled={!formData.name.trim() || !formData.prefix.trim() || !formData.baseUrl.trim() || saving}>
             {saving ? "Saving..." : "Save"}
@@ -154,6 +177,7 @@ EditCompatibleNodeModal.propTypes = {
     prefix: PropTypes.string,
     apiType: PropTypes.string,
     baseUrl: PropTypes.string,
+    headers: PropTypes.object,
   }),
   onSave: PropTypes.func.isRequired,
   onClose: PropTypes.func.isRequired,

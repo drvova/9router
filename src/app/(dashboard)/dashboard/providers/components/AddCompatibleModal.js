@@ -41,6 +41,7 @@ function AddCompatibleModal({ variant, isOpen, onClose, onCreated }) {
     prefix: "",
     ...(config.hasApiType ? { apiType: "chat" } : {}),
     baseUrl: config.defaultBaseUrl,
+    headers: "",
   });
 
   const [formData, setFormData] = useState(initialFormData);
@@ -49,6 +50,7 @@ function AddCompatibleModal({ variant, isOpen, onClose, onCreated }) {
   const [checkModelId, setCheckModelId] = useState("");
   const [validating, setValidating] = useState(false);
   const [validationResult, setValidationResult] = useState(null);
+  const [submitError, setSubmitError] = useState(null);
 
   // openai: reset baseUrl when apiType changes; anthropic: reset checks when opened
   useEffect(() => {
@@ -64,6 +66,7 @@ function AddCompatibleModal({ variant, isOpen, onClose, onCreated }) {
   const handleSubmit = async () => {
     if (!formData.name.trim() || !formData.prefix.trim() || !formData.baseUrl.trim()) return;
     setSubmitting(true);
+    setSubmitError(null);
     try {
       const res = await fetch("/api/provider-nodes", {
         method: "POST",
@@ -73,6 +76,7 @@ function AddCompatibleModal({ variant, isOpen, onClose, onCreated }) {
           prefix: formData.prefix,
           ...(config.hasApiType ? { apiType: formData.apiType } : {}),
           baseUrl: formData.baseUrl,
+          headers: formData.headers,
           type: config.type,
         }),
       });
@@ -82,8 +86,11 @@ function AddCompatibleModal({ variant, isOpen, onClose, onCreated }) {
         setFormData(initialFormData());
         setCheckKey("");
         setValidationResult(null);
+      } else {
+        setSubmitError(data.error || `Failed to create ${config.errorLabel} node`);
       }
     } catch (error) {
+      setSubmitError(error.message);
       console.log(`Error creating ${config.errorLabel} node:`, error);
     } finally {
       setSubmitting(false);
@@ -165,6 +172,18 @@ function AddCompatibleModal({ variant, isOpen, onClose, onCreated }) {
           placeholder={config.defaultBaseUrl}
           hint={config.baseUrlHint}
         />
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-text-main">Custom Headers</label>
+          <textarea
+            className="w-full rounded-[10px] border border-transparent bg-surface-2 p-2 text-sm font-mono resize-y min-h-[80px] text-text-main placeholder-text-muted/70 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+            placeholder={"User-Agent: MyClient/1.0\nX-Client-Name: my-client"}
+            value={formData.headers}
+            onChange={(e) => setFormData({ ...formData, headers: e.target.value })}
+          />
+          <p className="text-xs text-text-muted">
+            Optional. One <code>Name: Value</code> per line. Sent on every request and applied last, so these override the defaults (including Authorization). Use for upstreams that gate on client identity.
+          </p>
+        </div>
         <Input
           label="API Key (for Check)"
           type="password"
@@ -189,6 +208,9 @@ function AddCompatibleModal({ variant, isOpen, onClose, onCreated }) {
           </Button>
           {renderValidationResult()}
         </div>
+        {submitError && (
+          <p className="text-xs text-red-500">{submitError}</p>
+        )}
         <div className="flex flex-col gap-2 sm:flex-row">
           <Button
             onClick={handleSubmit}
