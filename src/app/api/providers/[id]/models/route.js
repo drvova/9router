@@ -4,6 +4,7 @@ import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider } from "@/sha
 import { GEMINI_CONFIG } from "@/lib/oauth/constants/oauth";
 import { refreshGoogleToken, refreshCodexToken, updateProviderCredentials } from "@/sse/services/tokenRefresh";
 import { resolveOllamaLocalHost, PROVIDERS } from "open-sse/config/providers.js";
+import { PROVIDER_MEDIA } from "open-sse/providers/index.js";
 import { getModelsByProviderId } from "open-sse/config/providerModels.js";
 import { resolveKiroModels } from "open-sse/services/kiroModels.js";
 import { resolveKimchiModels } from "open-sse/services/kimchiModels.js";
@@ -82,17 +83,29 @@ const createOpenAIModelsConfig = (url) => ({
 
 // Registry-derived model config: builds a live-fetch config from the provider's
 // transport (single source of truth) without a hand-written PROVIDER_MODELS_CONFIG entry.
-// URL resolution order: validateUrl → baseUrl pattern derivation → modelsFetcher.url.
+// URL resolution order: connection baseUrl → validateUrl → baseUrl pattern derivation → modelsFetcher.url.
 // Honors non-bearer auth headers (e.g. x-api-key) and noAuth providers.
-const deriveModelsUrl = (transport) => {
+const CHAT_PATH_RE = /\/(chat\/completions|messages|responses|chat|embeddings)\/?$/;
+
+// A connection-supplied baseUrl (self-hosted, regional, or gateway endpoint) always wins:
+// the registry default would point at the wrong host.
+const deriveFromConnectionBase = (base) => {
+  if (!base || !base.startsWith("http")) return null;
+  const trimmed = base.replace(/\/$/, "").replace(CHAT_PATH_RE, "");
+  return trimmed.endsWith("/models") ? trimmed : `${trimmed}/models`;
+};
+
+const deriveModelsUrl = (transport, connection) => {
+  const fromConnection = deriveFromConnectionBase(connection?.providerSpecificData?.baseUrl);
+  if (fromConnection) return fromConnection;
   if (transport.validateUrl) return transport.validateUrl;
   const base = transport.baseUrl;
   if (!base || !base.startsWith("http")) return null;
   if (base.includes("/chat/completions")) return base.replace("/chat/completions", "/models");
-  if (/\/chat\/?$/.test(base)) return base.replace(/\/chat\/?$/, "/models");
   if (base.includes("/embeddings")) return base.replace("/embeddings", "/models");
-  if (/\/v\d+\/?$/.test(base)) return `${base.replace(/\/$/, "")}/models`;
   if (base.endsWith("/models")) return base;
+  if (CHAT_PATH_RE.test(base)) return base.replace(CHAT_PATH_RE, "/models");
+  if (/\/v\d+[a-z]*\/?$/.test(base)) return `${base.replace(/\/$/, "")}/models`;
   return null;
 };
 
@@ -108,17 +121,26 @@ const buildFetcherParser = (fetcherType) => {
   };
 };
 
-const buildRegistryModelsConfig = (providerId) => {
+// Formats whose upstream exposes a REST model list at `<base>/models`. Bespoke formats
+// (kiro, cursor, gemini-cli, vertex, *-web, ...) resolve via PROVIDER_MODELS_CONFIG instead.
+const LISTABLE_FORMATS = new Set(["openai", "openai-responses", "claude"]);
+
+const buildRegistryModelsConfig = (providerId, connection) => {
   const transport = PROVIDERS[providerId];
-  if (!transport || (transport.format && transport.format !== "openai")) return null;
+  if (!transport || !LISTABLE_FORMATS.has(transport.format || "openai")) return null;
 
-  let url = deriveModelsUrl(transport);
-  let fetcherType = null;
+  // Registry `modelsFetcher` is a top-level entry field: providers/index.js routes it into
+  // PROVIDER_MEDIA, not the transport. Prefer it over derivation — it names a curated
+  // catalog URL (+ filter type) that the provider's chat baseUrl cannot be guessed into.
+  const fetcher = PROVIDER_MEDIA[providerId]?.modelsFetcher;
+  let url = fetcher?.url || deriveModelsUrl(transport, connection);
+  let fetcherType = fetcher?.url ? fetcher.type : null;
 
-  // Fall back to modelsFetcher URL when baseUrl derivation fails
-  if (!url && transport.modelsFetcher?.url) {
-    url = transport.modelsFetcher.url;
-    fetcherType = transport.modelsFetcher.type;
+  // A connection-supplied endpoint outranks the shared catalog URL.
+  const fromConnection = deriveFromConnectionBase(connection?.providerSpecificData?.baseUrl);
+  if (fromConnection) {
+    url = fromConnection;
+    fetcherType = null;
   }
 
   if (!url) return null;
@@ -128,6 +150,18 @@ const buildRegistryModelsConfig = (providerId) => {
 
   if (transport.noAuth) {
     return { url, method: "GET", headers: { "Content-Type": "application/json" }, noAuth: true, parseResponse };
+  }
+  // Anthropic-shaped upstreams key on x-api-key; third-party gateways often want Bearer too.
+  if (transport.format === "claude") {
+    return {
+      url,
+      method: "GET",
+      headers: { "Content-Type": "application/json", "anthropic-version": "2023-06-01" },
+      authHeader: auth?.header || "x-api-key",
+      authPrefix: auth?.scheme === "bearer" ? "Bearer " : "",
+      alsoBearer: true,
+      parseResponse,
+    };
   }
   if (auth?.header && auth.header.toLowerCase() !== "authorization") {
     return {
@@ -141,6 +175,8 @@ const buildRegistryModelsConfig = (providerId) => {
   }
   return { ...createOpenAIModelsConfig(url), parseResponse };
 };
+
+export const __test__ = { deriveModelsUrl, buildRegistryModelsConfig };
 
 const resolveQwenModelsUrl = (connection) => {
   const fallback = "https://portal.qwen.ai/v1/models";
@@ -604,7 +640,7 @@ export async function GET(request, { params }) {
       });
     }
 
-    const config = PROVIDER_MODELS_CONFIG[connection.provider] || buildRegistryModelsConfig(connection.provider);
+    const config = PROVIDER_MODELS_CONFIG[connection.provider] || buildRegistryModelsConfig(connection.provider, connection);
     if (!config) {
       return NextResponse.json(
         { error: `Provider ${connection.provider} does not support models listing` },
@@ -646,6 +682,9 @@ export async function GET(request, { params }) {
     if (token && config.authHeader && !config.authQuery) {
       headers[config.authHeader] = (config.authPrefix || "") + token;
     }
+    if (token && config.alsoBearer && !headers["Authorization"]) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
 
     // Make request
     const fetchOptions = {
@@ -662,10 +701,6 @@ export async function GET(request, { params }) {
     if (!response.ok) {
       const errorText = await response.text();
       console.log(`Error fetching models from ${connection.provider}:`, errorText);
-      return NextResponse.json(
-        { error: `Failed to fetch models: ${response.status}` },
-        { status: response.status }
-      );
       return NextResponse.json(
         { error: `Failed to fetch models: ${response.status}` },
         { status: response.status }
