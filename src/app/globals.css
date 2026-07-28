@@ -52,9 +52,17 @@
   --color-warning: #F59E0B;
   --color-info: #3B82F6;
 
-  /* Radius */
+  /* Radius — locked to the 4px spacing scale so curves are never arbitrary.
+     Shell geometry uses these directly via var(); component radii keep the brand aliases. */
+  --radius-xs: 8px;
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
   --radius-brand: 10px;
   --radius-brand-lg: 14px;
+
+  /* Shell easing: long decelerating curve for panel/width transitions (easeOutCirc). */
+  --ease-shell: cubic-bezier(0.075, 0.82, 0.165, 1);
 
   /* Shadows */
   --shadow-soft: 0 1px 2px 0 rgba(0,0,0,0.04);

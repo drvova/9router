@@ -109,7 +109,9 @@ export default function Sidebar({ onClose }) {
 
   return (
     <>
-      <aside className="flex w-72 flex-col border-r border-border-subtle bg-vibrancy backdrop-blur-xl transition-colors duration-300 min-h-full">
+      {/* Desktop: transparent over the page ground — the main panel's own border draws the seam,
+          so no second hairline here. Mobile keeps the vibrancy since it floats as a drawer. */}
+      <aside className="flex w-72 flex-col border-r border-border-subtle bg-vibrancy backdrop-blur-xl transition-colors duration-300 min-h-full lg:border-r-0 lg:bg-transparent lg:backdrop-blur-none">
         {/* Traffic lights */}
         <div className="flex items-center gap-2 px-6 pt-5 pb-2">
           <div className="w-3 h-3 rounded-full bg-[#FF5F56]" />
@@ -164,7 +166,7 @@ export default function Sidebar({ onClose }) {
               href={item.href}
               onClick={onClose}
               className={cn(
-                "flex items-center gap-3 px-3 py-1 rounded-lg transition-all group",
+                "flex items-center gap-3 px-3 py-1 rounded-lg transition-colors duration-300 group",
                 isActive(item.href)
                   ? "bg-primary/10 text-primary"
                   : "text-text-muted hover:bg-surface-2 hover:text-text-main"
@@ -178,7 +180,7 @@ export default function Sidebar({ onClose }) {
               >
                 {item.icon}
               </span>
-              <span className="text-[13px] font-medium">{item.label}</span>
+              <span className="text-sm font-medium">{item.label}</span>
             </Link>
           ))}
 
@@ -192,14 +194,14 @@ export default function Sidebar({ onClose }) {
             <button
               onClick={() => setMediaOpen((v) => !v)}
               className={cn(
-                "w-full flex items-center gap-3 px-3 py-1 rounded-lg transition-all group",
+                "w-full flex items-center gap-3 px-3 py-1 rounded-lg transition-colors duration-300 group",
                 pathname.startsWith("/dashboard/media-providers")
                   ? "bg-primary/10 text-primary"
                   : "text-text-muted hover:bg-surface-2 hover:text-text-main"
               )}
             >
               <span className="material-symbols-outlined text-[18px]">perm_media</span>
-              <span className="text-[13px] font-medium flex-1 text-left">Media Providers</span>
+              <span className="text-sm font-medium flex-1 text-left">Media Providers</span>
               <span className="material-symbols-outlined text-[14px] transition-transform" style={{ transform: mediaOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
                 expand_more
               </span>
@@ -212,7 +214,7 @@ export default function Sidebar({ onClose }) {
                     href={`/dashboard/media-providers/${kind.id}`}
                     onClick={onClose}
                     className={cn(
-                      "flex items-center gap-3 px-4 py-1 rounded-lg transition-all group",
+                      "flex items-center gap-3 px-4 py-1 rounded-lg transition-colors duration-300 group",
                       pathname.startsWith(`/dashboard/media-providers/${kind.id}`)
                         ? "bg-primary/10 text-primary"
                         : "text-text-muted hover:bg-surface-2 hover:text-text-main"
@@ -227,7 +229,7 @@ export default function Sidebar({ onClose }) {
                   href={COMBINED_WEB_ITEM.href}
                   onClick={onClose}
                   className={cn(
-                    "flex items-center gap-3 px-4 py-1 rounded-lg transition-all group",
+                    "flex items-center gap-3 px-4 py-1 rounded-lg transition-colors duration-300 group",
                     pathname.startsWith(COMBINED_WEB_ITEM.href)
                       ? "bg-primary/10 text-primary"
                       : "text-text-muted hover:bg-surface-2 hover:text-text-main"
@@ -245,7 +247,7 @@ export default function Sidebar({ onClose }) {
                 href={item.href}
                 onClick={onClose}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-1 rounded-lg transition-all group",
+                  "flex items-center gap-3 px-3 py-1 rounded-lg transition-colors duration-300 group",
                   isActive(item.href)
                     ? "bg-primary/10 text-primary"
                     : "text-text-muted hover:bg-surface-2 hover:text-text-main"
@@ -259,7 +261,7 @@ export default function Sidebar({ onClose }) {
                 >
                   {item.icon}
                 </span>
-                <span className="text-[13px] font-medium">{item.label}</span>
+                <span className="text-sm font-medium">{item.label}</span>
               </Link>
             ))}
 
@@ -272,7 +274,7 @@ export default function Sidebar({ onClose }) {
                   href={item.href}
                   onClick={onClose}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-1 rounded-lg transition-all group",
+                    "flex items-center gap-3 px-3 py-1 rounded-lg transition-colors duration-300 group",
                     isActive(item.href)
                       ? "bg-primary/10 text-primary"
                       : "text-text-muted hover:bg-surface-2 hover:text-text-main"
@@ -286,7 +288,7 @@ export default function Sidebar({ onClose }) {
                   >
                     {item.icon}
                   </span>
-                  <span className="text-[13px] font-medium">{item.label}</span>
+                  <span className="text-sm font-medium">{item.label}</span>
                 </Link>
               ) : null;
             })}
@@ -295,14 +297,14 @@ export default function Sidebar({ onClose }) {
             <button
               onClick={() => setShowRemoteModal(true)}
               className={cn(
-                "flex items-center gap-3 px-3 py-1 rounded-lg transition-all group w-full",
+                "flex items-center gap-3 px-3 py-1 rounded-lg transition-colors duration-300 group w-full",
                 "text-text-muted hover:bg-surface-2 hover:text-text-main"
               )}
             >
               <span className="material-symbols-outlined text-[18px] group-hover:text-primary transition-colors">
                 computer
               </span>
-              <span className="text-[13px] font-medium">Remote</span>
+              <span className="text-sm font-medium">Remote</span>
             </button>
 
             {/* Settings */}
@@ -310,7 +312,7 @@ export default function Sidebar({ onClose }) {
               href="/dashboard/profile"
               onClick={onClose}
               className={cn(
-                "flex items-center gap-3 px-3 py-1 rounded-lg transition-all group",
+                "flex items-center gap-3 px-3 py-1 rounded-lg transition-colors duration-300 group",
                 isActive("/dashboard/profile")
                   ? "bg-primary/10 text-primary"
                   : "text-text-muted hover:bg-surface-2 hover:text-text-main"
@@ -324,7 +326,7 @@ export default function Sidebar({ onClose }) {
               >
                 settings
               </span>
-              <span className="text-[13px] font-medium">Settings</span>
+              <span className="text-sm font-medium">Settings</span>
             </Link>
           </div>
         </nav>
