@@ -74,6 +74,7 @@ export default function ProviderDetailPage() {
   const [headersError, setHeadersError] = useState(null);
   const [captureNote, setCaptureNote] = useState(null);
   const [promptCaptureNote, setPromptCaptureNote] = useState(null);
+  const routerBaseUrl = typeof window === "undefined" ? "http://localhost:20128" : window.location.origin;
   const [systemPromptVars, setSystemPromptVars] = useState("");
   const [savedSystemPromptVars, setSavedSystemPromptVars] = useState("");
   const [detectedVars, setDetectedVars] = useState([]);
@@ -423,7 +424,7 @@ export default function ProviderDetailPage() {
       const res = await fetch(`/api/provider-nodes/${providerId}/captured-headers`, { cache: "no-store" });
       const data = res.ok ? await res.json() : null;
       if (!data?.capture?.systemPrompt) {
-        setPromptCaptureNote("No system prompt seen yet. Send one request through this router and press again.");
+        setPromptCaptureNote(`No system prompt seen yet. Point the client at ${routerBaseUrl}/v1 and send one request, then press again.`);
         return;
       }
       setSystemPrompt(data.capture.systemPrompt);
@@ -439,7 +440,7 @@ export default function ProviderDetailPage() {
       const res = await fetch(`/api/provider-nodes/${providerId}/captured-headers`, { cache: "no-store" });
       const data = res.ok ? await res.json() : null;
       if (!data?.capture) {
-        setCaptureNote("No client request seen yet. Send one request through this router and press again.");
+        setCaptureNote(`No client request seen yet. Point the client at ${routerBaseUrl}/v1 and send one request, then press again.`);
         return;
       }
       setNodeHeaders(data.capture.lines);

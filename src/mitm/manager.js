@@ -62,6 +62,45 @@ function resolveBundledServerPath() {
   return fromCwd;
 }
 
+// The MITM server requires Node. It mints a certificate per host through
+// tls SNICallback, and Bun does not fire that callback — measured on bun 1.3.14, where
+// SNICallback never ran and http.Server emit("connection") produced no response. Under
+// Bun the server would still start and would still terminate TLS, but with the root
+// certificate for every host, which clients reject on hostname mismatch. That is a
+// silent failure, so this resolves Node explicitly rather than inheriting the parent
+// interpreter via process.execPath.
+function resolveServerRuntime() {
+  if (!process.versions.bun) return process.execPath;
+
+  const candidates = [];
+  try {
+    const probe = process.platform === "win32" ? "where node" : "command -v node";
+    const found = execSync(probe, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+    candidates.push(...found);
+  } catch {
+    // not on PATH; fall through to the well-known locations below
+  }
+  candidates.push("/usr/local/bin/node", "/usr/bin/node", "/opt/homebrew/bin/node");
+
+  for (const candidate of candidates) {
+    try {
+      fs.accessSync(candidate, fs.constants.X_OK);
+      return candidate;
+    } catch {
+      // try the next candidate
+    }
+  }
+
+  const e = new Error(
+    "MITM requires Node, and the dashboard is running under Bun. Install Node or start the dashboard with npm run dev."
+  );
+  e.code = "NODE_RUNTIME_REQUIRED";
+  throw e;
+}
+
 // Copy bundled server.js into DATA_DIR so MITM doesn't lock node_modules
 // (prevents EBUSY on `npm i -g 9router@latest` while MITM is running).
 function ensureRuntimeServer(bundledPath) {
@@ -601,7 +640,7 @@ async function startServer(apiKey, sudoPassword, forceKillPort443 = false) {
     // Spawn directly — process already has admin rights
     // cwd=tmpdir so process doesn't lock the install dir on Windows (EBUSY on update)
     serverProcess = spawn(
-      process.execPath,
+      resolveServerRuntime(),
       [effectiveServerPath],
       {
         detached: false,
@@ -626,7 +665,7 @@ async function startServer(apiKey, sudoPassword, forceKillPort443 = false) {
       `ROUTER_API_KEY=${shellQuoteSingle(apiKey)}`,
       `MITM_ROUTER_BASE=${shellQuoteSingle(mitmRouterBase)}`,
       "NODE_ENV=production",
-      shellQuoteSingle(process.execPath),
+      shellQuoteSingle(resolveServerRuntime()),
       shellQuoteSingle(effectiveServerPath),
     ].join(" ");
     serverProcess = spawn(
@@ -637,7 +676,7 @@ async function startServer(apiKey, sudoPassword, forceKillPort443 = false) {
     serverProcess.stdin.end();
   } else {
     // Docker/minimal images: no sudo — same as Windows-style direct spawn
-    serverProcess = spawn(process.execPath, [effectiveServerPath], {
+    serverProcess = spawn(resolveServerRuntime(), [effectiveServerPath], {
       detached: false,
       windowsHide: true,
       cwd: os.tmpdir(),
