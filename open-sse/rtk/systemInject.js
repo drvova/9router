@@ -19,9 +19,11 @@ const SEP = "\n\n";
  * @param {object} body - Request body (not mutated)
  * @param {string} format - Target wire format
  * @param {string} prompt - Text to append
+ * @param {boolean} systemInInput - Responses shape only: carry the prompt as a system item
+ *   in input[] rather than in the top-level instructions field.
  * @returns {object} New body with the prompt injected, or the original when nothing to do
  */
-export function injectSystemPrompt(body, format, prompt) {
+export function injectSystemPrompt(body, format, prompt, systemInInput = false) {
   if (!body || !prompt) return body;
 
   switch (format) {
@@ -35,14 +37,16 @@ export function injectSystemPrompt(body, format, prompt) {
       return injectGeminiSystem(body, prompt);
     default:
       // OpenAI and OpenAI-shaped formats (responses/codex/cursor/kiro/ollama)
-      return injectMessagesSystem(body, prompt);
+      return injectMessagesSystem(body, prompt, systemInInput);
   }
 }
 
 // OpenAI-shaped: messages[] (chat) or input[] (responses) or instructions (responses string)
-function injectMessagesSystem(body, prompt) {
-  // OpenAI Responses API: top-level string field
-  if (typeof body.instructions === "string") {
+function injectMessagesSystem(body, prompt, systemInInput = false) {
+  // OpenAI Responses API: top-level string field. Skipped when the caller wants the prompt
+  // in the conversation instead — this branch otherwise wins on a translated Responses body,
+  // where instructions is set to "" and therefore still a string.
+  if (!systemInInput && typeof body.instructions === "string") {
     return { ...body, instructions: body.instructions ? `${body.instructions}${SEP}${prompt}` : prompt };
   }
 

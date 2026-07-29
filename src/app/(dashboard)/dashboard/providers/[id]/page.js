@@ -2113,6 +2113,9 @@ export default function ProviderDetailPage() {
       />
       {isCompatible && (
         <EditCompatibleNodeModal
+          // Remount per open so the form starts from the node's current values without an
+          // effect syncing props into state after mount.
+          key={`${providerNode?.id || "none"}:${showEditNodeModal}`}
           isOpen={showEditNodeModal}
           node={providerNode}
           onSave={handleUpdateNode}

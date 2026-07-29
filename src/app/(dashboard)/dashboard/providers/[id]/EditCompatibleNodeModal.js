@@ -1,16 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import PropTypes from "prop-types";
 import { Button, Badge, Input, Modal, Select } from "@/shared/components";
 
 export default function EditCompatibleNodeModal({ isOpen, node, onSave, onClose, isAnthropic }) {
-  const [formData, setFormData] = useState({
-    name: "",
-    prefix: "",
-    apiType: "chat",
-    baseUrl: "https://api.openai.com/v1",
-  });
+  // Read from the node up front rather than syncing after mount. The page keys this modal on
+  // the node and the open flag, so each open starts from the node's current values. An
+  // effect here would be a setState-in-effect cascade, and losing it in an earlier refactor
+  // left the modal opening blank — with handleSubmit then bailing on its empty-field guard,
+  // so Save silently did nothing.
+  const [formData, setFormData] = useState(() => ({
+    name: node?.name || "",
+    prefix: node?.prefix || "",
+    apiType: node?.apiType || "chat",
+    baseUrl: node?.baseUrl || (isAnthropic ? "https://api.anthropic.com/v1" : "https://api.openai.com/v1"),
+  }));
   const [saving, setSaving] = useState(false);
   const [checkKey, setCheckKey] = useState("");
   const [checkModelId, setCheckModelId] = useState("");

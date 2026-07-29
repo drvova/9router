@@ -226,7 +226,13 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
       provider, alias, model, format: finalFormat, connection: credentials?.connectionName,
     }));
     const renderedPrompt = renderPromptTemplate(providerSystemPrompt, promptContext, log);
-    translatedBody = injectSystemPrompt(translatedBody, finalFormat, renderedPrompt);
+    // Same rule as the request translator: a compatible node on Responses carries its
+    // system prompt in input[], because a third-party implementation reads the
+    // conversation and need not fold instructions into it. Injection runs after
+    // translation, so without this the prompt lands in the instructions the translator
+    // left empty and never reaches the upstream.
+    const systemInInput = credentials?.providerSpecificData?.apiType === "responses";
+    translatedBody = injectSystemPrompt(translatedBody, finalFormat, renderedPrompt, systemInInput);
     xf.push("SYSPROMPT");
   }
 
