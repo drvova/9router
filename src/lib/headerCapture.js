@@ -1,10 +1,13 @@
 // Autonomous client-fingerprint capture.
 //
 // 9router is the front door: every request it serves already carries the calling
-// client's headers. So the header set an upstream gate checks for does not need to be
-// pasted, probed or catalogued — it arrives on its own the first time the real client
-// is pointed at the router. This records what arrived, per provider, so the dashboard
-// can offer it.
+// client's headers, so the set an upstream gate checks for arrives on its own. This
+// records what arrived so the dashboard can offer it.
+//
+// One flat ring rather than a map keyed by provider. Keying by provider meant a node
+// that had never been sent traffic had nothing to offer, even when the router had seen
+// plenty of requests — the fingerprint of a client is a property of the client, not of
+// whichever provider a given request happened to route to.
 //
 // In memory only, deliberately. A disk record of inbound headers is a store of other
 // clients' credentials; nothing here outlives the process, and the credential and
@@ -23,21 +26,26 @@ const SKIP = new Set([
 // family: enumerating x-forwarded-for/-host/-proto missed x-forwarded-port.
 const PROXY_ADDED = /^x-forwarded-/i;
 
-// Headers 9router's own clients and browsers send; they identify the caller, not a
+// Headers browsers and generic HTTP clients send; they identify the caller, not a
 // vendor client worth reproducing.
 const UNINTERESTING = /^(sec-|dnt$|origin$|referer$|user-agent$|pragma$|cache-control$|if-|range$|priority$)/i;
 
-const MAX_PROVIDERS = 50;
-const captures = new Map();
+const MAX_ENTRIES = 10;
+const recent = [];
+
+// Distinct clients are distinguished by which headers they send, not by the values,
+// which change every request. So a repeat from the same client refreshes its entry
+// rather than filling the ring with near-duplicates.
+const signatureOf = (headers) => Object.keys(headers).map((k) => k.toLowerCase()).sort().join(",");
 
 /**
  * Record the interesting headers of one inbound request.
- * @param {string} provider - Resolved provider id
- * @param {object} headers - Inbound headers, lowercase keys
+ * @param {string} provider - Provider the request routed to, for display only
+ * @param {object} headers - Inbound headers
  * @returns {number} count of headers kept
  */
 export function recordClientHeaders(provider, headers) {
-  if (!provider || !headers) return 0;
+  if (!headers) return 0;
 
   const kept = {};
   for (const [rawName, value] of Object.entries(headers)) {
@@ -49,23 +57,38 @@ export function recordClientHeaders(provider, headers) {
   }
   if (Object.keys(kept).length === 0) return 0;
 
-  if (!captures.has(provider) && captures.size >= MAX_PROVIDERS) {
-    // Bounded: the key is a provider id, so cardinality is small, but never unbounded.
-    captures.delete(captures.keys().next().value);
-  }
-  captures.set(provider, { headers: kept, at: new Date().toISOString() });
+  const signature = signatureOf(kept);
+  const existing = recent.findIndex((e) => e.signature === signature);
+  if (existing >= 0) recent.splice(existing, 1);
+
+  recent.unshift({ signature, headers: kept, provider: provider || null, at: new Date().toISOString() });
+  if (recent.length > MAX_ENTRIES) recent.length = MAX_ENTRIES;
   return Object.keys(kept).length;
 }
 
 /**
- * The most recent capture for a provider.
- * @param {string} provider - Provider id
- * @returns {{ headers: object, at: string }|null}
+ * Best capture to offer a provider: one recorded against it if there is one, otherwise
+ * the most recent from anywhere, since a client's header set does not depend on which
+ * provider the request was routed to.
+ * @param {string} provider - Provider id being configured
+ * @returns {{ headers: object, at: string, provider: string|null, exact: boolean }|null}
  */
 export function getClientHeaderCapture(provider) {
-  return captures.get(provider) || null;
+  if (recent.length === 0) return null;
+  const exact = provider ? recent.find((e) => e.provider === provider) : null;
+  const chosen = exact || recent[0];
+  return { headers: chosen.headers, at: chosen.at, provider: chosen.provider, exact: Boolean(exact) };
 }
 
-export function clearClientHeaderCapture(provider) {
-  return captures.delete(provider);
+/**
+ * Every distinct client header set the router has seen, newest first.
+ * @returns {Array<{ headers: object, at: string, provider: string|null }>}
+ */
+export function listClientHeaderCaptures() {
+  return recent.map(({ headers, at, provider }) => ({ headers, at, provider }));
+}
+
+export function clearClientHeaderCaptures() {
+  recent.length = 0;
+  return true;
 }

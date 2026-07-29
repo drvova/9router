@@ -422,11 +422,14 @@ export default function ProviderDetailPage() {
       const res = await fetch(`/api/provider-nodes/${providerId}/captured-headers`, { cache: "no-store" });
       const data = res.ok ? await res.json() : null;
       if (!data?.capture) {
-        setCaptureNote("No client request seen for this provider yet.");
+        setCaptureNote("No client request seen yet. Send one request through this router and press again.");
         return;
       }
       setNodeHeaders(data.capture.lines);
-      setCaptureNote(`Filled ${data.capture.count} header${data.capture.count === 1 ? "" : "s"} from the last client request.`);
+      const plural = data.capture.count === 1 ? "" : "s";
+      setCaptureNote(data.capture.exact
+        ? `Filled ${data.capture.count} header${plural} from the last request to this provider.`
+        : `Filled ${data.capture.count} header${plural} from the last request the router saw${data.capture.fromProvider ? ` (routed to ${data.capture.fromProvider})` : ""}.`);
     } catch (error) {
       setCaptureNote(`Could not read the capture: ${error.message}`);
     }
