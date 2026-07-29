@@ -269,16 +269,32 @@ export function openaiToOpenAIResponsesRequest(model, body, stream, credentials)
     store: false
   };
 
-  // Extract system message as instructions
+  // Where the system prompt goes. `instructions` is the idiomatic Responses encoding and a
+  // known backend is built around it — the Codex executor injects its own default when the
+  // field is empty, so moving the prompt out from under it would replace the operator's
+  // prompt with a stock one. A user-configured compatible node is the opposite case: it
+  // points at an arbitrary third-party implementation, and `instructions` is a convenience
+  // the server is expected to fold into the conversation, which not every implementation
+  // does. A system item in input[] is the encoding every implementation must handle, and it
+  // is equally valid per the spec. apiType is present only on operator-configured compatible
+  // nodes, never on codex, grok-cli or perplexity-agent.
+  const systemInInput = credentials?.providerSpecificData?.apiType === "responses";
+
   let hasSystemMessage = false;
   const messages = body.messages || [];
 
   for (const msg of messages) {
     if (msg.role === ROLE.SYSTEM || msg.role === ROLE.DEVELOPER) {
-      // Use the first instruction-bearing message as instructions.
+      // Use the first instruction-bearing message as the system prompt.
       // OpenAI recommends role="developer" for GPT-5/Codex as the system-level prompt.
       if (!hasSystemMessage) {
-        result.instructions = typeof msg.content === "string" ? msg.content : "";
+        const text = typeof msg.content === "string" ? msg.content : "";
+        if (systemInInput) {
+          // Position matters: emitted here, it keeps the place it held in messages[].
+          result.input.push({ role: msg.role, content: [{ type: RESPONSES_ITEM.INPUT_TEXT, text }] });
+        } else {
+          result.instructions = text;
+        }
         hasSystemMessage = true;
       }
       continue; // Skip instruction messages in input
