@@ -9,9 +9,14 @@
 // plenty of requests — the fingerprint of a client is a property of the client, not of
 // whichever provider a given request happened to route to.
 //
-// In memory only, deliberately. A disk record of inbound headers is a store of other
-// clients' credentials; nothing here outlives the process, and the credential and
-// transport headers are dropped before anything is kept at all.
+// Persisted, because a capture that dies with the process is a capture the operator
+// cannot use: restarting for any reason emptied it and the button reported nothing.
+// Safe to persist because the credential headers never enter the store at all — the skip
+// list below drops authorization, api keys and cookies before anything is kept.
+//
+// Persistence is injected rather than imported, following initDbHooks in the mitm route,
+// so the store stays a pure module: tests exercise it without a database, and nothing is
+// written unless an app entry point wires it up.
 
 const SKIP = new Set([
   // supplied by the connection, or rewritten in transit — recording them is either
@@ -59,7 +64,55 @@ function extractSystemPrompt(body) {
 }
 
 const MAX_ENTRIES = 10;
+// A captured prompt is someone else's content, not just a name, so it is capped rather
+// than allowed to grow the settings row without bound.
+const MAX_PROMPT_CHARS = 32_000;
 const recent = [];
+
+let _load = null;
+let _save = null;
+let hydration = null;
+
+/**
+ * Wire persistence. Called by app entry points; omitted in tests, which then run purely
+ * in memory.
+ * @param {{ load: () => Promise<Array|null>, save: (entries: Array) => Promise<void> }} hooks
+ */
+export function initCaptureStore({ load, save } = {}) {
+  _load = load || null;
+  _save = save || null;
+}
+
+async function hydrate() {
+  if (!_load) return;
+  if (!hydration) {
+    hydration = (async () => {
+      try {
+        const stored = await _load();
+        if (!Array.isArray(stored)) return;
+        // Anything already in memory is newer than the stored copy, so it wins.
+        const seen = new Set(recent.map((e) => e.signature));
+        for (const entry of stored) {
+          if (!entry?.signature || seen.has(entry.signature)) continue;
+          recent.push(entry);
+          seen.add(entry.signature);
+        }
+        if (recent.length > MAX_ENTRIES) recent.length = MAX_ENTRIES;
+      } catch {
+        // A capture is a convenience; a failed read must not break the page asking for it.
+      }
+    })();
+  }
+  return hydration;
+}
+
+// Written only when a client not seen before appears. Identifier values are templated on
+// the way out, so a stale uuid costs nothing, and the literal values that do matter
+// (product versions, intents) do not change between requests from the same client.
+function persist() {
+  if (!_save) return;
+  Promise.resolve(_save(recent.map((e) => ({ ...e })))).catch(() => { /* convenience only */ });
+}
 
 // Distinct clients are distinguished by which headers they send, not by the values,
 // which change every request. So a repeat from the same client refreshes its entry
@@ -89,10 +142,18 @@ export function recordClientHeaders(provider, headers, body = null) {
 
   const signature = signatureOf(kept);
   const existing = recent.findIndex((e) => e.signature === signature);
-  if (existing >= 0) recent.splice(existing, 1);
+  const isNewClient = existing < 0;
+  if (!isNewClient) recent.splice(existing, 1);
 
-  recent.unshift({ signature, headers: kept, systemPrompt, provider: provider || null, at: new Date().toISOString() });
+  recent.unshift({
+    signature,
+    headers: kept,
+    systemPrompt: systemPrompt ? systemPrompt.slice(0, MAX_PROMPT_CHARS) : null,
+    provider: provider || null,
+    at: new Date().toISOString(),
+  });
   if (recent.length > MAX_ENTRIES) recent.length = MAX_ENTRIES;
+  if (isNewClient) persist();
   return Object.keys(kept).length;
 }
 
@@ -101,9 +162,10 @@ export function recordClientHeaders(provider, headers, body = null) {
  * the most recent from anywhere, since a client's header set does not depend on which
  * provider the request was routed to.
  * @param {string} provider - Provider id being configured
- * @returns {{ headers: object, at: string, provider: string|null, exact: boolean }|null}
+ * @returns {Promise<{ headers: object, systemPrompt: string|null, at: string, provider: string|null, exact: boolean }|null>}
  */
-export function getClientHeaderCapture(provider) {
+export async function getClientHeaderCapture(provider) {
+  await hydrate();
   if (recent.length === 0) return null;
   const exact = provider ? recent.find((e) => e.provider === provider) : null;
   const chosen = exact || recent[0];
@@ -126,5 +188,7 @@ export function listClientHeaderCaptures() {
 
 export function clearClientHeaderCaptures() {
   recent.length = 0;
+  hydration = null;
+  persist();
   return true;
 }

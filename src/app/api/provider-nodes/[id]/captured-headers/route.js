@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
-import { getClientHeaderCapture, clearClientHeaderCaptures } from "@/lib/headerCapture";
+import { getClientHeaderCapture, clearClientHeaderCaptures, initCaptureStore } from "@/lib/headerCapture";
+import { getSettings, updateSettings } from "@/lib/localDb";
 import { templatiseHeaders, formatKeyValueLines, wrapControlBlocks } from "@/shared/utils";
 
 export const dynamic = "force-dynamic";
+
+// Same shape as initDbHooks in the mitm route: the store stays a pure module and the app
+// supplies the storage.
+initCaptureStore({
+  load: async () => (await getSettings()).clientHeaderCaptures || null,
+  save: async (entries) => { await updateSettings({ clientHeaderCaptures: entries }); },
+});
 
 // GET /api/provider-nodes/[id]/captured-headers
 // The best client header set to offer this node, already templated so the identifiers
@@ -12,7 +20,7 @@ export const dynamic = "force-dynamic";
 export async function GET(_request, { params }) {
   try {
     const { id } = await params;
-    const capture = getClientHeaderCapture(id);
+    const capture = await getClientHeaderCapture(id);
     if (!capture) return NextResponse.json({ capture: null });
 
     const { headers, replaced } = templatiseHeaders(capture.headers);

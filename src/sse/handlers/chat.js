@@ -8,10 +8,10 @@ import {
   isValidApiKey,
 } from "../services/auth.js";
 import { cacheClaudeHeaders } from "open-sse/utils/claudeHeaderCache.js";
-import { getSettings } from "@/lib/localDb";
+import { getSettings, updateSettings } from "@/lib/localDb";
 import { getModelInfo, getComboModels } from "../services/model.js";
 import { handleChatCore } from "open-sse/handlers/chatCore.js";
-import { recordClientHeaders } from "@/lib/headerCapture";
+import { recordClientHeaders, initCaptureStore } from "@/lib/headerCapture";
 import { DEFAULT_HEADROOM_URL } from "@/lib/headroom/detect";
 import { getTransform as getPxpipeTransform } from "@/lib/pxpipe/loader.js";
 import { appendPxpipeEvent } from "@/lib/pxpipe/events.js";
@@ -29,6 +29,12 @@ import { getProjectIdForConnection } from "open-sse/services/projectId.js";
  * Supports: OpenAI, Claude, Gemini, OpenAI Responses API formats
  * Format detection and translation handled by translator
  */
+// Captures survive a restart only if the write path knows how to store them.
+initCaptureStore({
+  load: async () => (await getSettings()).clientHeaderCaptures || null,
+  save: async (entries) => { await updateSettings({ clientHeaderCaptures: entries }); },
+});
+
 export async function handleChat(request, clientRawRequest = null) {
   let body;
   try {
