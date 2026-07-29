@@ -52,6 +52,16 @@ export const KIMI_CODING_BASE_URL = "https://api.kimi.com/coding/v1/messages";
 
 // Default base for dynamic compat providers (openai-compatible-* / anthropic-compatible-*) when user gives no baseUrl
 export const OPENAI_COMPAT_BASE = "https://api.openai.com/v1";
+
+// A compatible node encodes its API type in its id at creation, and an id can never
+// change. That made the id the de facto source of truth and the stored apiType a field
+// nobody read, so switching a node from chat to responses in the dashboard saved a value
+// and changed no behaviour. The stored value decides; the id is only the fallback for
+// connections written before the field was carried through.
+export function resolveOpenAICompatibleType(provider, storedApiType) {
+  if (storedApiType === "chat" || storedApiType === "responses") return storedApiType;
+  return provider?.includes?.("responses") ? "responses" : "chat";
+}
 export const ANTHROPIC_COMPAT_BASE = "https://api.anthropic.com/v1";
 
 // Official Antigravity IDE Desktop 2.1.1 fingerprint captured from macOS arm64.

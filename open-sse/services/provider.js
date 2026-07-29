@@ -1,5 +1,5 @@
 import { PROVIDERS } from "../config/providers.js";
-import { OPENAI_COMPAT_BASE, ANTHROPIC_COMPAT_BASE } from "../providers/shared.js";
+import { OPENAI_COMPAT_BASE, ANTHROPIC_COMPAT_BASE, resolveOpenAICompatibleType } from "../providers/shared.js";
 
 const OPENAI_COMPATIBLE_PREFIX = "openai-compatible-";
 const OPENAI_COMPATIBLE_DEFAULTS = {
@@ -19,9 +19,9 @@ function isAnthropicCompatible(provider) {
   return typeof provider === "string" && provider.startsWith(ANTHROPIC_COMPATIBLE_PREFIX);
 }
 
-function getOpenAICompatibleType(provider) {
+function getOpenAICompatibleType(provider, storedApiType) {
   if (!isOpenAICompatible(provider)) return "chat";
-  return provider.includes("responses") ? "responses" : "chat";
+  return resolveOpenAICompatibleType(provider, storedApiType);
 }
 
 // Detect request format from body structure
@@ -125,9 +125,9 @@ function getProviderConfig(provider) {
 }
 
 // Get target format for provider
-export function getTargetFormat(provider) {
+export function getTargetFormat(provider, storedApiType) {
   if (isOpenAICompatible(provider)) {
-    return getOpenAICompatibleType(provider) === "responses" ? "openai-responses" : "openai";
+    return getOpenAICompatibleType(provider, storedApiType) === "responses" ? "openai-responses" : "openai";
   }
   if (isAnthropicCompatible(provider)) {
     return "claude";

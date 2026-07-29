@@ -62,7 +62,12 @@ export async function PUT(request, { params }) {
     };
 
     if (node.type === "openai-compatible") {
-      updates.apiType = apiType;
+      if (apiType !== undefined && apiType !== "chat" && apiType !== "responses") {
+        return NextResponse.json({ error: "apiType must be chat or responses" }, { status: 400 });
+      }
+      // Now that routing reads this field, a caller that omits it must leave it alone
+      // rather than clear it and silently send the node back to its id-derived default.
+      if (apiType !== undefined) updates.apiType = apiType;
     }
 
     const updated = await updateProviderNode(id, updates);
@@ -73,7 +78,7 @@ export async function PUT(request, { params }) {
         providerSpecificData: {
           ...(connection.providerSpecificData || {}),
           prefix: prefix.trim(),
-          apiType: node.type === "openai-compatible" ? apiType : undefined,
+          apiType: node.type === "openai-compatible" ? updated.apiType : undefined,
           baseUrl: sanitizedBaseUrl,
           headers,
           nodeName: updated.name,
