@@ -151,7 +151,7 @@ export default function EditCompatibleNodeModal({ isOpen, node, systemPrompt = "
           <label className="text-sm font-medium text-text-main">Variables</label>
           <textarea
             className="w-full rounded-[10px] border border-transparent bg-surface-2 p-2 text-sm font-mono resize-y min-h-[80px] text-text-main placeholder-text-muted/70 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-            placeholder={"productName: WorkBuddy\ndataFolderName: .workbuddy\nproductFeatures.DisableMultimodalGeneration: false"}
+            placeholder={"productName: MyClient\ndataFolderName: .myclient\nfeatures.DisableUploads: false"}
             value={formData.systemPromptVars}
             onChange={(e) => setFormData({ ...formData, systemPromptVars: e.target.value })}
           />

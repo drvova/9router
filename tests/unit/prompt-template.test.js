@@ -185,3 +185,44 @@ describe("renderHeaderValues", () => {
     expect(out["X-A"]).toBe("{% if %}");
   });
 });
+
+describe("header templating is provider-agnostic", () => {
+  // Nothing in the mechanism knows any vendor: whatever header names and value
+  // templates an API demands, it renders. These are three unrelated real-world
+  // fingerprint shapes exercising the same code path.
+  const ctxFor = (provider) => ({ provider, connection: "acct", ...buildRequestVars() });
+
+  it("renders an AWS-style x-amz fingerprint", () => {
+    const h = renderHeaderValues({
+      "x-amz-user-agent": "aws-sdk-js/1.0.0 SomeIDE",
+      "amz-sdk-invocation-id": "{{ uuid() }}",
+      "amz-sdk-request": "attempt=1; max=3",
+    }, ctxFor("p"));
+    expect(h["amz-sdk-invocation-id"]).toMatch(/^[0-9a-f-]{36}$/);
+    expect(h["amz-sdk-request"]).toBe("attempt=1; max=3");
+  });
+
+  it("renders a Datadog-style correlated trace pair", () => {
+    const h = renderHeaderValues({
+      "x-datadog-trace-id": "{{ traceId }}",
+      "x-datadog-parent-id": "{{ spanId }}",
+      "x-datadog-sampling-priority": "1",
+    }, ctxFor("p"));
+    expect(h["x-datadog-trace-id"]).not.toBe(h["x-datadog-parent-id"]);
+    expect(h["x-datadog-sampling-priority"]).toBe("1");
+  });
+
+  it("renders an idempotency key plus a session header off one context", () => {
+    const h = renderHeaderValues({
+      "Idempotency-Key": "{{ requestId }}",
+      "X-Session": "{{ provider }}-{{ connection }}",
+      "X-Nonce": "{{ hex(12) }}",
+    }, ctxFor("stripe-like"));
+    expect(h["X-Session"]).toBe("stripe-like-acct");
+    expect(h["X-Nonce"]).toMatch(/^[0-9a-f]{12}$/);
+  });
+
+  it("passes through a header with no template at all", () => {
+    expect(renderHeaderValues({ "X-Static": "plain" }, ctxFor("p"))["X-Static"]).toBe("plain");
+  });
+});

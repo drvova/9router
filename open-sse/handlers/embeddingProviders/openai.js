@@ -1,5 +1,6 @@
 // OpenAI-compatible embeddings adapter (most providers)
 import { bearerAuth } from "./_base.js";
+import { renderHeaderValues, buildRequestVars } from "../../rtk/promptTemplate.js";
 import { PROVIDER_MEDIA } from "../../providers/index.js";
 
 // media-only providers without a registry file keep URL here; rest derive from registry media.embeddingConfig.baseUrl
@@ -15,8 +16,18 @@ export default function createOpenAIEmbeddingAdapter(providerId) {
   return {
     buildUrl: () => embedUrl(providerId),
     buildHeaders: (creds) => {
-      // Per-node custom headers (custom-embedding nodes) applied last.
-      return { "Content-Type": "application/json", ...bearerAuth(creds), ...(cfg.headers || {}), ...(creds?.providerSpecificData?.headers || {}) };
+      const headers = { "Content-Type": "application/json", ...bearerAuth(creds), ...(cfg.headers || {}) };
+      // Per-node custom headers applied last, templated exactly as on the chat path
+      // so an embedding node can reproduce the same per-request client fingerprint.
+      const custom = creds?.providerSpecificData?.headers;
+      if (custom) {
+        Object.assign(headers, renderHeaderValues(custom, {
+          provider: providerId,
+          connection: creds?.connectionName || "",
+          ...buildRequestVars(),
+        }));
+      }
+      return headers;
     },
     buildBody: (model, { input, encoding_format, dimensions }) => {
       const body = { model, input };
