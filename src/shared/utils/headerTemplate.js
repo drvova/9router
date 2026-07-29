@@ -1,6 +1,6 @@
-// Turn a captured cURL command into a header template.
+// Turn an observed header set into a header template.
 //
-// A capture is a snapshot: its ids are frozen. Pasting them verbatim sends one
+// A capture is a snapshot: its ids are frozen. Storing them verbatim would send one
 // identical uuid on every request, which is a fingerprint no real client produces.
 // So identifier-shaped values are replaced with the template variables that
 // regenerate them per request, and values shared across several headers are given
@@ -14,47 +14,6 @@ const HEX16_RE = /^[0-9a-f]{16}$/i;
 // which header name happens to be read first.
 const TRACEPARENT_RE = /^(\d{2})-([0-9a-f]{32})-([0-9a-f]{16})-(\d{2})$/i;
 const B3_RE = /^([0-9a-f]{32})-([0-9a-f]{16})(?:-([0-9a-fx]+))?$/i;
-
-// Transport and auth headers a router sets itself. Importing these would either be
-// overwritten downstream or duplicate the connection's own credential.
-const SKIP = new Set([
-  "host", "content-length", "connection", "accept-encoding", "transfer-encoding",
-  "authorization", "content-type", "accept", "user-agent",
-]);
-
-/**
- * Extract headers from a cURL command. Handles -H and --header, single and double
- * quotes, and backslash line continuations.
- * @param {string} text - Pasted cURL command
- * @returns {{ headers?: Object, skipped?: string[], error?: string }}
- */
-export function parseCurlHeaders(text) {
-  if (!text || !text.trim()) return { headers: {}, skipped: [] };
-  const flat = text.replace(/\\\r?\n/g, " ");
-  if (!/(^|\s)(-H|--header)(\s|=)/.test(flat)) {
-    return { error: "No -H or --header flags found. Paste a full cURL command." };
-  }
-
-  const headers = {};
-  const skipped = [];
-  // -H 'Name: Value' | -H "Name: Value" | --header=Name:Value
-  const re = /(?:-H|--header)[\s=]+(?:'([^']*)'|"([^"]*)"|(\S+))/g;
-  for (const m of flat.matchAll(re)) {
-    const raw = m[1] ?? m[2] ?? m[3] ?? "";
-    const sep = raw.indexOf(":");
-    if (sep < 1) continue;
-    const name = raw.slice(0, sep).trim();
-    const value = raw.slice(sep + 1).trim();
-    if (!name) continue;
-    if (SKIP.has(name.toLowerCase())) { skipped.push(name); continue; }
-    headers[name] = value;
-  }
-
-  if (Object.keys(headers).length === 0) {
-    return { error: "Found no importable headers — only transport or auth headers." };
-  }
-  return { headers, skipped };
-}
 
 /**
  * Replace identifier-shaped values with per-request template variables, keeping

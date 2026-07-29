@@ -1,6 +1,6 @@
 // Shared Utils - Export all
 export { cn } from "./cn";
-export { parseCurlHeaders, templatiseHeaders } from "./curlHeaders";
+export { templatiseHeaders } from "./headerTemplate";
 export * as api from "./api";
 export { getProviderIconSrc, markProviderIconMissing, resolveProviderIconId } from "./providerIcon";
 

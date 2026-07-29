@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
-import { CurlHeaderImport, Badge, Button, Input, Modal, Select } from "@/shared/components";
+import { Badge, Button, Input, Modal, Select } from "@/shared/components";
 
 const VARIANT_CONFIG = {
   openai: {
@@ -201,7 +201,6 @@ function AddCompatibleModal({ variant, isOpen, onClose, onCreated }) {
           <p className="text-xs text-text-muted">
             Optional. One <code>Name: Value</code> per line. Sent on every request and applied last, so these override the defaults (including Authorization). Use for upstreams that gate on client identity.
           </p>
-          <CurlHeaderImport onImport={(lines) => setFormData((prev) => ({ ...prev, headers: lines }))} />
         </div>
         <Input
           label="API Key (for Check)"

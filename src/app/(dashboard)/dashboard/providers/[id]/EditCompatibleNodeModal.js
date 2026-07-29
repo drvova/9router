@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
-import { CurlHeaderImport, Button, Badge, Input, Modal, Select } from "@/shared/components";
+import { Button, Badge, Input, Modal, Select } from "@/shared/components";
 import { formatKeyValueLines } from "@/shared/utils";
 
 export default function EditCompatibleNodeModal({ isOpen, node, systemPrompt = "", systemPromptVars = "", onSave, onClose, isAnthropic }) {
@@ -21,7 +21,8 @@ export default function EditCompatibleNodeModal({ isOpen, node, systemPrompt = "
   const [validating, setValidating] = useState(false);
   const [validationResult, setValidationResult] = useState(null);
   const [saveError, setSaveError] = useState(null);
-  const [capture, setCapture] = useState(null);
+  const [captureLoading, setCaptureLoading] = useState(false);
+  const [captureNote, setCaptureNote] = useState(null);
 
   useEffect(() => {
     if (node) {
@@ -37,19 +38,26 @@ export default function EditCompatibleNodeModal({ isOpen, node, systemPrompt = "
     }
   }, [node, isAnthropic, systemPrompt, systemPromptVars]);
 
-  useEffect(() => {
-    if (!isOpen || !node?.id) return undefined;
-    let cancelled = false;
-    fetch(`/api/provider-nodes/${node.id}/captured-headers`, { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (!cancelled) setCapture(d?.capture || null); })
-      .catch(() => { /* advisory only */ });
-    return () => { cancelled = true; };
-  }, [isOpen, node?.id]);
-
-  const applyCapture = () => {
-    if (!capture) return;
-    setFormData((prev) => ({ ...prev, headers: capture.lines }));
+  // Fetched on click rather than on open: the capture lives in server memory and can
+  // appear at any moment, so reading it when the button is pressed is always current.
+  const useCapturedHeaders = async () => {
+    if (!node?.id) return;
+    setCaptureLoading(true);
+    setCaptureNote(null);
+    try {
+      const res = await fetch(`/api/provider-nodes/${node.id}/captured-headers`, { cache: "no-store" });
+      const data = res.ok ? await res.json() : null;
+      if (!data?.capture) {
+        setCaptureNote("No client request seen for this provider yet. Point the client at this router and send one request.");
+        return;
+      }
+      setFormData((prev) => ({ ...prev, headers: data.capture.lines }));
+      setCaptureNote(`Applied ${data.capture.count} header${data.capture.count === 1 ? "" : "s"} from the last client request.`);
+    } catch (error) {
+      setCaptureNote(`Could not read the capture: ${error.message}`);
+    } finally {
+      setCaptureLoading(false);
+    }
   };
 
   const apiTypeOptions = [
@@ -171,15 +179,12 @@ export default function EditCompatibleNodeModal({ isOpen, node, systemPrompt = "
             One <code>Name: Value</code> per line. Applied last, so these override the defaults
             including <code>Authorization</code>. Values are templates: <code>{"{{ uuid() }}"}</code>.
           </p>
-          {capture && capture.lines !== formData.headers && (
-            <div className="flex flex-wrap items-center gap-2 rounded-[10px] bg-brand-500/10 px-2 py-1.5">
-              <span className="text-xs text-text-main">
-                {capture.count} header{capture.count === 1 ? "" : "s"} seen arriving from a client
-              </span>
-              <Button size="sm" variant="secondary" onClick={applyCapture}>Use these</Button>
-            </div>
-          )}
-          <CurlHeaderImport onImport={(lines) => setFormData((prev) => ({ ...prev, headers: lines }))} />
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="sm" variant="secondary" onClick={useCapturedHeaders} disabled={captureLoading}>
+              {captureLoading ? "Checking..." : "Use headers from last client request"}
+            </Button>
+            {captureNote && <span className="text-xs text-text-muted">{captureNote}</span>}
+          </div>
         </div>
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium text-text-main" htmlFor="edit-node-system-prompt">System Prompt</label>
