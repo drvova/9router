@@ -72,6 +72,7 @@ export default function ProviderDetailPage() {
   const [savedSystemPromptVars, setSavedSystemPromptVars] = useState("");
   const [systemPromptMode, setSystemPromptMode] = useState("jinja");
   const [savedSystemPromptMode, setSavedSystemPromptMode] = useState("jinja");
+  const [detectedVars, setDetectedVars] = useState([]);
   const [providerStickyLimit, setProviderStickyLimit] = useState("");
   const [thinkingMode, setThinkingMode] = useState("auto");
   const [autoPing, setAutoPing] = useState({ enabled: false, connections: {} });
@@ -419,6 +420,43 @@ export default function ProviderDetailPage() {
   const handleStickyLimitChange = (value) => {
     setProviderStickyLimit(value);
     saveProviderStrategy("round-robin", value);
+  };
+
+  // Detect which variables the prompt consumes. Debounced and advisory: it fills no
+  // field on its own, because silently appending lines to a textarea someone is typing
+  // in is worse than asking for one click.
+  useEffect(() => {
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      if (!systemPrompt.trim()) {
+        if (!cancelled) setDetectedVars([]);
+        return;
+      }
+      try {
+        const res = await fetch("/api/prompt-variables", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ template: systemPrompt, mode: systemPromptMode }),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setDetectedVars(data.variables || []);
+      } catch {
+        // Convenience only — a failed detection must not disturb the editor.
+      }
+    }, 600);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [systemPrompt, systemPromptMode]);
+
+  const missingVars = (() => {
+    const { entries } = parseKeyValueLines(systemPromptVars);
+    const declared = new Set(Object.keys(entries || {}));
+    return detectedVars.filter((name) => !declared.has(name));
+  })();
+
+  const addMissingVars = () => {
+    const lines = missingVars.map((name) => `${name}: `);
+    setSystemPromptVars((prev) => (prev.trim() ? `${prev.replace(/\s+$/, "")}\n${lines.join("\n")}` : lines.join("\n")));
   };
 
   // Single write path for the per-provider system prompt, shared by the card below
@@ -1753,6 +1791,22 @@ export default function ProviderDetailPage() {
             value={systemPromptVars}
             onChange={(e) => setSystemPromptVars(e.target.value)}
           />
+          {missingVars.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 rounded-[10px] bg-brand-500/10 px-2 py-1.5">
+              <span className="text-xs text-text-main">
+                {missingVars.length === 1
+                  ? "1 variable in the prompt has no value:"
+                  : `${missingVars.length} variables in the prompt have no value:`}
+              </span>
+              <code className="text-xs break-all">{missingVars.join(", ")}</code>
+              <Button size="sm" variant="secondary" onClick={addMissingVars}>Add</Button>
+            </div>
+          )}
+          {detectedVars.length > 0 && missingVars.length === 0 && (
+            <span className="text-xs text-green-500">
+              All {detectedVars.length} prompt variable{detectedVars.length === 1 ? "" : "s"} have values.
+            </span>
+          )}
           <p className="text-xs text-text-muted">
             Optional. One <code>Name: Value</code> per line, available to the prompt as <code>{"{{ Name }}"}</code>. Dotted names nest, so <code>flags.Enabled: false</code> satisfies <code>{"{% if not flags.Enabled %}"}</code>. <code>true</code>/<code>false</code>/numbers are coerced. Built-ins: <code>provider alias model modelName format connection date time datetime</code> — your names win on clash.
           </p>

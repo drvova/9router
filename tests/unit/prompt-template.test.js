@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPromptContext, buildRequestVars, buildRuntimeVars, renderHeaderValues, renderPromptTemplate } from "../../open-sse/rtk/promptTemplate.js";
+import { BUILT_IN_VAR_NAMES, buildPromptContext, buildRequestVars, buildRuntimeVars, collectTemplateVariables, renderHeaderValues, renderPromptTemplate } from "../../open-sse/rtk/promptTemplate.js";
 
 const ctx = (vars, runtime = {}) => buildPromptContext(vars, buildRuntimeVars({
   provider: "openai-compatible-chat-abc",
@@ -271,5 +271,68 @@ describe("substitute mode: fill {{ vars }}, leave {% %} untouched", () => {
     const tpl = "{% if 1 %}YES{% else %}NO{% endif %}";
     expect(renderPromptTemplate(tpl, ctx, null, "T", "jinja")).toBe("YES");
     expect(sub(tpl)).toBe(tpl);
+  });
+});
+
+describe("collectTemplateVariables", () => {
+  const SRC = [
+    "Powered by {{ modelName }}",
+    "{%- if not productFeatures.DisableMultimodalGeneration %}x{%- endif %}",
+    "{% if '\u4e2d\u6587' in ResponseLanguage %}a{% else %}b{% endif %}",
+    '"{{ dataFolderName }}" folder',
+    "{{ productName }} calls present_files",
+    "{% for i in range(3) %}{{ i }}{% endfor %}",
+    "{% set local = 1 %}{{ local }}",
+    "{{ deep.a.b.c }} {{ x|upper }}",
+  ].join("\n");
+
+  it("finds names used only inside a control block, which a {{ }} regex cannot", () => {
+    const vars = collectTemplateVariables(SRC, "jinja");
+    // ResponseLanguage appears solely in {% if %} — this is the variable whose absence
+    // once aborted the whole render.
+    expect(vars).toContain("ResponseLanguage");
+    expect(vars).toContain("productFeatures.DisableMultimodalGeneration");
+  });
+
+  it("returns full dotted paths, not just the root", () => {
+    expect(collectTemplateVariables(SRC, "jinja")).toContain("deep.a.b.c");
+  });
+
+  it("omits built-ins so a blank value cannot shadow them", () => {
+    // Operator variables override built-ins; suggesting modelName would let an empty
+    // auto-added line render the model name as "".
+    const vars = collectTemplateVariables(SRC, "jinja");
+    for (const name of BUILT_IN_VAR_NAMES) expect(vars).not.toContain(name);
+  });
+
+  it("omits nunjucks globals and filter names", () => {
+    const vars = collectTemplateVariables(SRC, "jinja");
+    expect(vars).not.toContain("range");
+    expect(vars).not.toContain("upper");
+  });
+
+  it("omits {% for %} and {% set %} locals in jinja mode", () => {
+    const vars = collectTemplateVariables(SRC, "jinja");
+    expect(vars).not.toContain("i");
+    expect(vars).not.toContain("local");
+  });
+
+  it("lists exactly the {{ }} tokens in substitute mode", () => {
+    // {% %} passes through untouched there, so a control-block-only name would never
+    // be substituted and must not be offered.
+    const vars = collectTemplateVariables(SRC, "substitute");
+    expect(vars).toContain("productName");
+    expect(vars).toContain("dataFolderName");
+    expect(vars).not.toContain("ResponseLanguage");
+    expect(vars).not.toContain("productFeatures.DisableMultimodalGeneration");
+  });
+
+  it("stays silent on an unparseable template rather than guessing", () => {
+    expect(collectTemplateVariables("{% if %}", "jinja")).toEqual([]);
+  });
+
+  it("returns nothing for empty input", () => {
+    expect(collectTemplateVariables("", "jinja")).toEqual([]);
+    expect(collectTemplateVariables(undefined, "jinja")).toEqual([]);
   });
 });

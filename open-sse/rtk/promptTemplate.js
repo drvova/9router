@@ -193,6 +193,96 @@ export function renderHeaderValues(headers, context, log) {
  * @param {object} attempt - { provider, model, alias, format, connection }
  * @returns {object} Built-in variables
  */
+// Names buildRuntimeVars always provides. Detection must not offer these: operator
+// variables override built-ins, so an auto-added blank line for modelName would
+// silently render the prompt's model name as empty.
+export const BUILT_IN_VAR_NAMES = Object.freeze([
+  "requestId", "conversationId", "traceId", "spanId",
+  "provider", "alias", "model", "modelName", "format", "connection",
+  "date", "time", "datetime",
+]);
+
+/**
+ * Variable names a template actually consumes, for pre-filling the operator's
+ * variables editor. Names only — values cannot be inferred, since they are facts
+ * about the client being reproduced, not about the router.
+ *
+ * Mode matters. In substitute mode only {{ }} is filled and {% %} passes through
+ * untouched, so a name referenced solely inside a control block would never be
+ * used and offering it would mislead.
+ *
+ * @param {string} source - Template source
+ * @param {string} [mode] - "jinja" or "substitute"
+ * @returns {string[]} Dotted variable paths, excluding built-ins, template locals,
+ *                     and nunjucks' own globals and filters
+ */
+export function collectTemplateVariables(source, mode = "jinja") {
+  if (!source) return [];
+  const builtIns = new Set(BUILT_IN_VAR_NAMES);
+  const keep = (path) => !builtIns.has(path) && !RESERVED.has(path.split(".")[0]);
+
+  if (mode === "substitute") {
+    const found = new Set();
+    for (const [, path] of source.matchAll(VAR_RE)) if (keep(path)) found.add(path);
+    return [...found];
+  }
+
+  let ast;
+  try {
+    ast = nunjucks.parser.parse(source, [], {});
+  } catch {
+    // Unparseable source has no reliable variable list; the render path reports the
+    // syntax error, so stay silent here rather than guessing from a broken parse.
+    return [];
+  }
+
+  const locals = collectTemplateLocals(ast);
+  const found = new Set();
+  const walk = (node) => {
+    if (!node || typeof node !== "object") return;
+    if (node instanceof nunjucks.nodes.LookupVal || node instanceof nunjucks.nodes.Symbol) {
+      const path = lookupPath(node);
+      if (path && keep(path) && !locals.has(path.split(".")[0])) found.add(path);
+      return;
+    }
+    if (Array.isArray(node.children)) node.children.forEach(walk);
+    for (const field of node.fields || []) walk(node[field]);
+  };
+  walk(ast);
+  return [...found];
+}
+
+// Full dotted path for a lookup chain; a computed index (a[i]) degrades to its base.
+function lookupPath(node) {
+  if (node instanceof nunjucks.nodes.Symbol) return node.value;
+  if (node instanceof nunjucks.nodes.LookupVal) {
+    const base = lookupPath(node.target);
+    const key = node.val instanceof nunjucks.nodes.Literal ? node.val.value : null;
+    return base && typeof key === "string" ? `${base}.${key}` : base;
+  }
+  return null;
+}
+
+// Names the template binds itself via {% for %} and {% set %} — frame-scoped, so
+// they are not operator input.
+function collectTemplateLocals(ast) {
+  const locals = new Set();
+  const walk = (node) => {
+    if (!node || typeof node !== "object") return;
+    if (node instanceof nunjucks.nodes.For && node.name) {
+      const names = node.name instanceof nunjucks.nodes.Array ? node.name.children : [node.name];
+      for (const sym of names) if (sym instanceof nunjucks.nodes.Symbol) locals.add(sym.value);
+    }
+    if (node instanceof nunjucks.nodes.Set && Array.isArray(node.targets)) {
+      for (const target of node.targets) if (target instanceof nunjucks.nodes.Symbol) locals.add(target.value);
+    }
+    if (Array.isArray(node.children)) node.children.forEach(walk);
+    for (const field of node.fields || []) walk(node[field]);
+  };
+  walk(ast);
+  return locals;
+}
+
 export function buildRuntimeVars({ provider, model, alias, format, connection }) {
   const now = new Date();
   return {
