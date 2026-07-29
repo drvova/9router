@@ -40,7 +40,7 @@ import { resolveSessionId } from "../utils/sessionManager.js";
  * @param {object} options.credentials - Provider credentials
  * @param {string} options.sourceFormatOverride - Override detected source format (e.g. "openai-responses")
  */
-export async function handleChatCore({ body, modelInfo, credentials, log, onCredentialsRefreshed, onRequestSuccess, onDisconnect, clientRawRequest, connectionId, userAgent, apiKey, ccFilterNaming, rtkEnabled, headroomEnabled, headroomUrl, headroomCompressUserMessages, cavemanEnabled, cavemanLevel, ponytailEnabled, ponytailLevel, pxpipeEnabled, pxpipeMinChars, pxpipeTimeoutMs, pxpipeTransform, onPxpipeEvent, sourceFormatOverride, providerThinking, providerSystemPrompt, providerSystemPromptVars, providerSystemPromptMode }) {
+export async function handleChatCore({ body, modelInfo, credentials, log, onCredentialsRefreshed, onRequestSuccess, onDisconnect, clientRawRequest, connectionId, userAgent, apiKey, ccFilterNaming, rtkEnabled, headroomEnabled, headroomUrl, headroomCompressUserMessages, cavemanEnabled, cavemanLevel, ponytailEnabled, ponytailLevel, pxpipeEnabled, pxpipeMinChars, pxpipeTimeoutMs, pxpipeTransform, onPxpipeEvent, sourceFormatOverride, providerThinking, providerSystemPrompt, providerSystemPromptVars }) {
   const { provider, model } = modelInfo;
   const requestStartTime = Date.now();
   // Stable per-session color so all lines of one CLI conversation share a tag
@@ -224,11 +224,9 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
     const promptContext = buildPromptContext(providerSystemPromptVars, buildRuntimeVars({
       provider, alias, model, format: finalFormat, connection: credentials?.connectionName,
     }));
-    const renderedPrompt = renderPromptTemplate(providerSystemPrompt, promptContext, log, "SYSPROMPT", providerSystemPromptMode);
+    const renderedPrompt = renderPromptTemplate(providerSystemPrompt, promptContext, log);
     translatedBody = injectSystemPrompt(translatedBody, finalFormat, renderedPrompt);
-    // Name the mode: an upstream that checks the prompt it receives rejects one mode and
-    // accepts the other, and a bare "SYSPROMPT" gives no way to tell which was used.
-    xf.push(`SYSPROMPT:${providerSystemPromptMode === "substitute" ? "substitute" : "jinja"}`);
+    xf.push("SYSPROMPT");
   }
 
   // Caveman: inject terse-style system prompt

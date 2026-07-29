@@ -70,8 +70,6 @@ export default function ProviderDetailPage() {
   const [systemPromptError, setSystemPromptError] = useState(null);
   const [systemPromptVars, setSystemPromptVars] = useState("");
   const [savedSystemPromptVars, setSavedSystemPromptVars] = useState("");
-  const [systemPromptMode, setSystemPromptMode] = useState("jinja");
-  const [savedSystemPromptMode, setSavedSystemPromptMode] = useState("jinja");
   const [detectedVars, setDetectedVars] = useState([]);
   const [controlBlocks, setControlBlocks] = useState(0);
   const [providerStickyLimit, setProviderStickyLimit] = useState("");
@@ -333,9 +331,6 @@ export default function ProviderDetailPage() {
       const storedVars = formatKeyValueLines((settingsData.providerSystemPromptVars || {})[providerId]);
       setSystemPromptVars(storedVars);
       setSavedSystemPromptVars(storedVars);
-      const storedMode = (settingsData.providerSystemPromptMode || {})[providerId] || "jinja";
-      setSystemPromptMode(storedMode);
-      setSavedSystemPromptMode(storedMode);
       const autoPingSettingsKey = AUTO_PING_SETTINGS_KEYS[providerId];
       const apCfg = autoPingSettingsKey ? settingsData[autoPingSettingsKey] || {} : {};
       setAutoPing({ enabled: apCfg.enabled === true, connections: apCfg.connections || {} });
@@ -437,7 +432,7 @@ export default function ProviderDetailPage() {
         const res = await fetch("/api/prompt-variables", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ template: systemPrompt, mode: systemPromptMode }),
+          body: JSON.stringify({ template: systemPrompt }),
         });
         if (!res.ok) return;
         const data = await res.json();
@@ -450,7 +445,7 @@ export default function ProviderDetailPage() {
       }
     }, 600);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [systemPrompt, systemPromptMode]);
+  }, [systemPrompt]);
 
   const parsedVars = parseKeyValueLines(systemPromptVars);
 
@@ -463,7 +458,7 @@ export default function ProviderDetailPage() {
 
   // Single write path for the per-provider system prompt, shared by the card below
   // and the compatible-node edit modal. Throws so each caller surfaces its own error.
-  const persistSystemPrompt = async (value, varsText, mode = systemPromptMode) => {
+  const persistSystemPrompt = async (value, varsText) => {
     const { entries: vars, error: varsError } = parseKeyValueLines(varsText);
     if (varsError) throw new Error(varsError);
 
@@ -491,13 +486,6 @@ export default function ProviderDetailPage() {
       else delete varMaps[providerId];
       patch.providerSystemPromptVars = varMaps;
     }
-    if (mode !== savedSystemPromptMode) {
-      const modes = { ...(settingsData.providerSystemPromptMode || {}) };
-      if (mode === "substitute") modes[providerId] = "substitute";
-      else delete modes[providerId];
-      patch.providerSystemPromptMode = modes;
-    }
-
     if (Object.keys(patch).length > 0) {
       const res = await fetch("/api/settings", {
         method: "PATCH",
@@ -511,8 +499,6 @@ export default function ProviderDetailPage() {
     setSavedSystemPrompt(trimmed);
     setSystemPromptVars(normalizedVars);
     setSavedSystemPromptVars(normalizedVars);
-    setSystemPromptMode(mode);
-    setSavedSystemPromptMode(mode);
   };
 
   // Compare the canonical form on both sides. The saved copy comes from
@@ -523,14 +509,13 @@ export default function ProviderDetailPage() {
   const systemPromptDirty =
     systemPrompt.trim() !== savedSystemPrompt
     || !!parsedVars.error
-    || formatKeyValueLines(parsedVars.entries || {}) !== savedSystemPromptVars
-    || systemPromptMode !== savedSystemPromptMode;
+    || formatKeyValueLines(parsedVars.entries || {}) !== savedSystemPromptVars;
 
   const saveSystemPrompt = async () => {
     setSystemPromptSaving(true);
     setSystemPromptError(null);
     try {
-      await persistSystemPrompt(systemPrompt, systemPromptVars, systemPromptMode);
+      await persistSystemPrompt(systemPrompt, systemPromptVars);
     } catch (error) {
       setSystemPromptError(error.message);
     } finally {
@@ -1779,7 +1764,8 @@ export default function ProviderDetailPage() {
             this provider only. On combo or account fallback the next provider uses its own prompt
             instead of this one. Rendered as a Jinja template per request, so{" "}
             <code>{"{{ model }}"}</code> and <code>{"{% if %}"}</code> work; a template error falls
-            back to the raw text rather than failing the request.
+            back to the raw text rather than failing the request. Wrap a block in{" "}
+            <code>{"{% raw %}"}</code> to send it unevaluated.
           </p>
         </div>
         <label className="sr-only" htmlFor="provider-system-prompt">System Prompt</label>
@@ -1819,30 +1805,14 @@ export default function ProviderDetailPage() {
             Optional. One <code>Name: Value</code> per line, available to the prompt as <code>{"{{ Name }}"}</code>. Dotted names nest, so <code>flags.Enabled: false</code> satisfies <code>{"{% if not flags.Enabled %}"}</code>. <code>true</code>/<code>false</code>/numbers are coerced. Built-ins: <code>provider alias model modelName format connection date time datetime</code> — your names win on clash.
           </p>
         </div>
-        <div className="mt-4 flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-text-main" htmlFor="provider-system-prompt-mode">Template mode</label>
-          <select
-            id="provider-system-prompt-mode"
-            value={systemPromptMode}
-            onChange={(e) => setSystemPromptMode(e.target.value)}
-            className="w-full rounded-[10px] border border-transparent bg-surface-2 p-2 text-sm text-text-main focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-          >
-            <option value="jinja">{"Evaluate Jinja — {{ vars }} and {% if %} logic both run"}</option>
-            <option value="substitute">{"Substitute only — fill {{ vars }}, send {% %} verbatim"}</option>
-          </select>
-          {systemPromptMode === "jinja" && controlBlocks > 0 && (
-            <p className="text-xs text-yellow-500">
-              This prompt contains {controlBlocks} <code>{"{% %}"}</code> block
-              {controlBlocks === 1 ? "" : "s"}. Jinja mode evaluates them, so they will not reach the
-              provider. If this upstream checks the prompt it receives, switch to Substitute only.
-            </p>
-          )}
-          <p className="text-xs text-text-muted">
-            Pick <strong>Substitute only</strong> when pasting a vendor prompt into an upstream that
-            checks the prompt it receives. Those clients do plain token substitution, so the control
-            blocks are expected to arrive unevaluated; stripping them can fail the check.
+        {controlBlocks > 0 && (
+          <p className="mt-3 text-xs text-yellow-500">
+            This prompt contains {controlBlocks} <code>{"{% %}"}</code> block
+            {controlBlocks === 1 ? "" : "s"}, which are evaluated and will not reach the provider as
+            written. If this upstream checks the prompt it receives, wrap each one in{" "}
+            <code>{"{% raw %}...{% endraw %}"}</code> so it is sent verbatim.
           </p>
-        </div>
+        )}
         {systemPromptError && (
           <p className="mt-2 text-xs text-red-500">{systemPromptError}</p>
         )}

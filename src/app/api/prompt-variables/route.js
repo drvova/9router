@@ -10,19 +10,16 @@ export const dynamic = "force-dynamic";
 // one request would cost far more than the request.
 export async function POST(request) {
   try {
-    const { template, mode } = await request.json();
+    const { template } = await request.json();
 
     if (typeof template !== "string") {
       return NextResponse.json({ error: "template must be a string" }, { status: 400 });
     }
-    if (mode !== undefined && mode !== "jinja" && mode !== "substitute") {
-      return NextResponse.json({ error: 'mode must be "jinja" or "substitute"' }, { status: 400 });
-    }
 
-    const variables = collectTemplateVariables(template, mode || "jinja");
-    // Count of {% %} blocks: jinja evaluates these away, substitute passes them
-    // through. An upstream that inspects the prompt it receives can reject the
-    // evaluated form, so the editor needs the count to warn before a request fails.
+    const variables = collectTemplateVariables(template);
+    // Count of {% %} blocks. Rendering evaluates these away, so an upstream that
+    // inspects the prompt it receives can reject the result; the editor uses the
+    // count to point at {% raw %} before a request fails.
     const controlBlocks = (template.match(/\{%/g) || []).length;
     return NextResponse.json({ variables, controlBlocks });
   } catch (error) {

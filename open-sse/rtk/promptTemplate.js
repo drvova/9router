@@ -61,26 +61,6 @@ function compile(source) {
   return entry;
 }
 
-// Substitute {{ name }} and nothing else, leaving {% %} byte-for-byte intact.
-// Needed because real client prompts are Jinja *source* that the vendor's own client
-// only does token substitution on — an upstream that fingerprints the prompt expects
-// the control blocks still present, so evaluating them fails the check.
-const VAR_RE = /\{\{\s*([A-Za-z_$][\w$]*(?:\.[\w$]+)*)\s*\}\}/g;
-
-export function substitutePromptVars(text, context) {
-  if (!text) return text;
-  return text.replace(VAR_RE, (match, path) => {
-    let value = context;
-    for (const key of path.split(".")) {
-      if (value == null || typeof value !== "object" || !(key in value)) return match;
-      value = value[key];
-    }
-    // Leave the placeholder visible rather than emitting "[object Object]"/"undefined".
-    if (value == null || typeof value === "object" || typeof value === "function") return match;
-    return String(value);
-  });
-}
-
 /**
  * Render a prompt template. Fail-open by design: a malformed template must never
  * take down a request, so any render error falls back to the raw text.
@@ -95,12 +75,10 @@ export function substitutePromptVars(text, context) {
  * @param {object} context - Values available to the template
  * @param {object} [log] - Optional logger
  * @param {string} [tag] - Log tag for the fail-open warning
- * @param {string} [mode] - "jinja" evaluates control blocks; "substitute" only fills {{ }}
  * @returns {string} Rendered text, or the original text on failure
  */
-export function renderPromptTemplate(text, context, log, tag = "SYSPROMPT", mode = "jinja") {
+export function renderPromptTemplate(text, context, log, tag = "SYSPROMPT") {
   if (!text || !text.includes("{")) return text;
-  if (mode === "substitute") return substitutePromptVars(text, context);
   try {
     const { template, roots } = compile(text);
     const scoped = { ...context };
@@ -207,25 +185,17 @@ export const BUILT_IN_VAR_NAMES = Object.freeze([
  * variables editor. Names only — values cannot be inferred, since they are facts
  * about the client being reproduced, not about the router.
  *
- * Mode matters. In substitute mode only {{ }} is filled and {% %} passes through
- * untouched, so a name referenced solely inside a control block would never be
- * used and offering it would mislead.
+ * Walks the AST rather than scanning for {{ }}, so a name used solely inside a
+ * control block is still found — that omission once aborted a whole render.
  *
  * @param {string} source - Template source
- * @param {string} [mode] - "jinja" or "substitute"
  * @returns {string[]} Dotted variable paths, excluding built-ins, template locals,
  *                     and nunjucks' own globals and filters
  */
-export function collectTemplateVariables(source, mode = "jinja") {
+export function collectTemplateVariables(source) {
   if (!source) return [];
   const builtIns = new Set(BUILT_IN_VAR_NAMES);
   const keep = (path) => !builtIns.has(path) && !RESERVED.has(path.split(".")[0]);
-
-  if (mode === "substitute") {
-    const found = new Set();
-    for (const [, path] of source.matchAll(VAR_RE)) if (keep(path)) found.add(path);
-    return [...found];
-  }
 
   let ast;
   try {
