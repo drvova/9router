@@ -17,10 +17,11 @@ export async function POST(request) {
     }
 
     const variables = collectTemplateVariables(template);
-    // Count of {% %} blocks. Rendering evaluates these away, so an upstream that
-    // inspects the prompt it receives can reject the result; the editor uses the
-    // count to point at {% raw %} before a request fails.
-    const controlBlocks = (template.match(/\{%/g) || []).length;
+    // Count only blocks that will actually be evaluated. Counting every {% occurrence
+    // also counted the {% raw %} and {% endraw %} wrappers, so a prompt whose blocks were
+    // correctly protected was warned about the very protection that fixed it.
+    const unprotected = template.replace(/\{%-?\s*raw\s*%\}[\s\S]*?\{%-?\s*endraw\s*%\}/g, "");
+    const controlBlocks = (unprotected.match(/\{%/g) || []).length;
     return NextResponse.json({ variables, controlBlocks });
   } catch (error) {
     console.log("Error detecting prompt variables:", error);

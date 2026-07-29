@@ -189,7 +189,7 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
   // The calling client hands us its headers on every request, so a fingerprint an
   // upstream gate checks for arrives on its own — no paste, no probe, no catalogue.
   // Kept in memory only; credential and transport headers are dropped before storage.
-  if (clientRawRequest?.headers) recordClientHeaders(provider, clientRawRequest.headers);
+  if (clientRawRequest?.headers) recordClientHeaders(provider, clientRawRequest.headers, clientRawRequest.body);
 
   // Routing shown in the unified "▶" line (client model → provider/model)
 

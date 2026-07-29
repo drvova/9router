@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getClientHeaderCapture, clearClientHeaderCaptures } from "@/lib/headerCapture";
-import { templatiseHeaders, formatKeyValueLines } from "@/shared/utils";
+import { templatiseHeaders, formatKeyValueLines, wrapControlBlocks } from "@/shared/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +24,10 @@ export async function GET(_request, { params }) {
         count: Object.keys(headers).length,
         lines: formatKeyValueLines(headers),
         replaced,
+        // Wrapped on the way out: the captured prompt is Jinja source, and rendering it
+        // would strip the very blocks a prompt gate checks for.
+        systemPrompt: capture.systemPrompt ? wrapControlBlocks(capture.systemPrompt) : null,
+        systemPromptChars: capture.systemPrompt?.length || 0,
       },
     });
   } catch (error) {

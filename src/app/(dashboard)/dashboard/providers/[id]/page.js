@@ -73,6 +73,7 @@ export default function ProviderDetailPage() {
   const [headersSaving, setHeadersSaving] = useState(false);
   const [headersError, setHeadersError] = useState(null);
   const [captureNote, setCaptureNote] = useState(null);
+  const [promptCaptureNote, setPromptCaptureNote] = useState(null);
   const [systemPromptVars, setSystemPromptVars] = useState("");
   const [savedSystemPromptVars, setSavedSystemPromptVars] = useState("");
   const [detectedVars, setDetectedVars] = useState([]);
@@ -416,6 +417,22 @@ export default function ProviderDetailPage() {
 
   // Read on click: the capture is whatever the router last saw arrive for this provider,
   // so fetching at press time is always current and needs no polling.
+  const useCapturedPrompt = async () => {
+    setPromptCaptureNote(null);
+    try {
+      const res = await fetch(`/api/provider-nodes/${providerId}/captured-headers`, { cache: "no-store" });
+      const data = res.ok ? await res.json() : null;
+      if (!data?.capture?.systemPrompt) {
+        setPromptCaptureNote("No system prompt seen yet. Send one request through this router and press again.");
+        return;
+      }
+      setSystemPrompt(data.capture.systemPrompt);
+      setPromptCaptureNote(`Filled ${data.capture.systemPromptChars} characters from the last request${data.capture.exact ? " to this provider" : " the router saw"}. Control blocks wrapped so they reach the provider unevaluated.`);
+    } catch (error) {
+      setPromptCaptureNote(`Could not read the capture: ${error.message}`);
+    }
+  };
+
   const useCapturedHeaders = async () => {
     setCaptureNote(null);
     try {
@@ -1929,8 +1946,12 @@ export default function ProviderDetailPage() {
               Clear
             </Button>
           )}
+          <Button size="sm" variant="secondary" onClick={useCapturedPrompt}>
+            Use prompt from last client request
+          </Button>
           {systemPromptDirty && <span className="text-xs text-text-muted">Unsaved changes</span>}
         </div>
+        {promptCaptureNote && <p className="mt-2 text-xs text-text-muted">{promptCaptureNote}</p>}
       </Card>
 
       {/* Models */}

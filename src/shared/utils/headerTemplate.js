@@ -107,3 +107,21 @@ export function templatiseHeaders(headers) {
 
   return { headers: out, replaced };
 }
+
+/**
+ * Wrap every {% ... %} tag in {% raw %} so it reaches the provider unevaluated.
+ *
+ * A prompt captured from a real client contains Jinja source, because vendor clients
+ * substitute tokens without evaluating logic. Rendering would consume those tags, and an
+ * upstream that checks the prompt it received rejects the evaluated form. Non-greedy to
+ * the closing %} so a % inside a tag does not truncate the match.
+ *
+ * @param {string} text - Prompt source
+ * @returns {string} Prompt with control blocks protected
+ */
+export function wrapControlBlocks(text) {
+  if (!text) return text;
+  // Already-protected blocks must not be nested; nunjucks does not support that.
+  if (/\{%-?\s*raw\s*%\}/.test(text)) return text;
+  return text.replace(/\{%[\s\S]*?%\}/g, (tag) => `{% raw %}${tag}{% endraw %}`);
+}

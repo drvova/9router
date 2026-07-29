@@ -30,6 +30,34 @@ const PROXY_ADDED = /^x-forwarded-/i;
 // vendor client worth reproducing.
 const UNINTERESTING = /^(sec-|dnt$|origin$|referer$|user-agent$|pragma$|cache-control$|if-|range$|priority$)/i;
 
+// The client's own system prompt, read from whichever shape the request arrived in.
+// This is the text an upstream prompt gate compares against, and it arrives on the same
+// request as the headers, so there is no reason to capture one without the other.
+function extractSystemPrompt(body) {
+  if (!body || typeof body !== "object") return null;
+
+  // OpenAI Responses: a top-level string
+  if (typeof body.instructions === "string" && body.instructions.trim()) return body.instructions;
+
+  // Claude: body.system as a string, or as blocks
+  if (typeof body.system === "string" && body.system.trim()) return body.system;
+  if (Array.isArray(body.system)) {
+    const text = body.system.map((b) => (typeof b === "string" ? b : b?.text || "")).join("\n\n").trim();
+    if (text) return text;
+  }
+
+  // OpenAI chat / responses input arrays
+  const arr = Array.isArray(body.messages) ? body.messages : Array.isArray(body.input) ? body.input : null;
+  const first = arr?.find((m) => m && (m.role === "system" || m.role === "developer"));
+  if (!first) return null;
+  if (typeof first.content === "string") return first.content.trim() || null;
+  if (Array.isArray(first.content)) {
+    const text = first.content.map((c) => (typeof c === "string" ? c : c?.text || "")).join("").trim();
+    return text || null;
+  }
+  return null;
+}
+
 const MAX_ENTRIES = 10;
 const recent = [];
 
@@ -42,9 +70,10 @@ const signatureOf = (headers) => Object.keys(headers).map((k) => k.toLowerCase()
  * Record the interesting headers of one inbound request.
  * @param {string} provider - Provider the request routed to, for display only
  * @param {object} headers - Inbound headers
+ * @param {object} [body] - Inbound request body, read for its system prompt only
  * @returns {number} count of headers kept
  */
-export function recordClientHeaders(provider, headers) {
+export function recordClientHeaders(provider, headers, body = null) {
   if (!headers) return 0;
 
   const kept = {};
@@ -55,13 +84,14 @@ export function recordClientHeaders(provider, headers) {
     if (typeof value !== "string" || value === "") continue;
     kept[name] = value;
   }
-  if (Object.keys(kept).length === 0) return 0;
+  const systemPrompt = extractSystemPrompt(body);
+  if (Object.keys(kept).length === 0 && !systemPrompt) return 0;
 
   const signature = signatureOf(kept);
   const existing = recent.findIndex((e) => e.signature === signature);
   if (existing >= 0) recent.splice(existing, 1);
 
-  recent.unshift({ signature, headers: kept, provider: provider || null, at: new Date().toISOString() });
+  recent.unshift({ signature, headers: kept, systemPrompt, provider: provider || null, at: new Date().toISOString() });
   if (recent.length > MAX_ENTRIES) recent.length = MAX_ENTRIES;
   return Object.keys(kept).length;
 }
@@ -77,7 +107,13 @@ export function getClientHeaderCapture(provider) {
   if (recent.length === 0) return null;
   const exact = provider ? recent.find((e) => e.provider === provider) : null;
   const chosen = exact || recent[0];
-  return { headers: chosen.headers, at: chosen.at, provider: chosen.provider, exact: Boolean(exact) };
+  return {
+    headers: chosen.headers,
+    systemPrompt: chosen.systemPrompt || null,
+    at: chosen.at,
+    provider: chosen.provider,
+    exact: Boolean(exact),
+  };
 }
 
 /**
@@ -85,7 +121,7 @@ export function getClientHeaderCapture(provider) {
  * @returns {Array<{ headers: object, at: string, provider: string|null }>}
  */
 export function listClientHeaderCaptures() {
-  return recent.map(({ headers, at, provider }) => ({ headers, at, provider }));
+  return recent.map(({ headers, systemPrompt, at, provider }) => ({ headers, systemPrompt, at, provider }));
 }
 
 export function clearClientHeaderCaptures() {

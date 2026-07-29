@@ -64,3 +64,35 @@ describe("getClientHeaderCapture", () => {
     expect(getClientHeaderCapture("anything")).toBeNull();
   });
 });
+
+describe("system prompt capture", () => {
+  it("reads the system message from an OpenAI chat body", () => {
+    recordClientHeaders("p1", { "x-a": "1" }, {
+      messages: [{ role: "system", content: "You are {{ productName }}." }, { role: "user", content: "hi" }],
+    });
+    expect(getClientHeaderCapture("p1").systemPrompt).toBe("You are {{ productName }}.");
+  });
+
+  it("reads Claude's system field, string or blocks", () => {
+    recordClientHeaders("c1", { "x-a": "1" }, { system: "plain string" });
+    expect(getClientHeaderCapture("c1").systemPrompt).toBe("plain string");
+    recordClientHeaders("c2", { "x-b": "1" }, { system: [{ type: "text", text: "block one" }, { type: "text", text: "block two" }] });
+    expect(getClientHeaderCapture("c2").systemPrompt).toBe("block one\n\nblock two");
+  });
+
+  it("reads the Responses API instructions field", () => {
+    recordClientHeaders("r1", { "x-a": "1" }, { instructions: "from instructions", input: [] });
+    expect(getClientHeaderCapture("r1").systemPrompt).toBe("from instructions");
+  });
+
+  it("records a request that carries only a system prompt and no interesting headers", () => {
+    // Otherwise a client sending nothing but a credential plus a prompt would be dropped.
+    expect(recordClientHeaders("p2", { authorization: "Bearer x" }, { messages: [{ role: "system", content: "kept" }] })).toBe(0);
+    expect(getClientHeaderCapture("p2").systemPrompt).toBe("kept");
+  });
+
+  it("is null when the request carried no system message", () => {
+    recordClientHeaders("p3", { "x-a": "1" }, { messages: [{ role: "user", content: "hi" }] });
+    expect(getClientHeaderCapture("p3").systemPrompt).toBeNull();
+  });
+});
