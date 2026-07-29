@@ -11,6 +11,7 @@ import { cacheClaudeHeaders } from "open-sse/utils/claudeHeaderCache.js";
 import { getSettings } from "@/lib/localDb";
 import { getModelInfo, getComboModels } from "../services/model.js";
 import { handleChatCore } from "open-sse/handlers/chatCore.js";
+import { recordClientHeaders } from "@/lib/headerCapture";
 import { DEFAULT_HEADROOM_URL } from "@/lib/headroom/detect";
 import { getTransform as getPxpipeTransform } from "@/lib/pxpipe/loader.js";
 import { appendPxpipeEvent } from "@/lib/pxpipe/events.js";
@@ -184,6 +185,11 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
   }
 
   const { provider, model } = modelInfo;
+
+  // The calling client hands us its headers on every request, so a fingerprint an
+  // upstream gate checks for arrives on its own — no paste, no probe, no catalogue.
+  // Kept in memory only; credential and transport headers are dropped before storage.
+  if (clientRawRequest?.headers) recordClientHeaders(provider, clientRawRequest.headers);
 
   // Routing shown in the unified "▶" line (client model → provider/model)
 
