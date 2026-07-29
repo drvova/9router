@@ -448,11 +448,9 @@ export default function ProviderDetailPage() {
     return () => { cancelled = true; clearTimeout(timer); };
   }, [systemPrompt, systemPromptMode]);
 
-  const missingVars = (() => {
-    const { entries } = parseKeyValueLines(systemPromptVars);
-    const declared = new Set(Object.keys(entries || {}));
-    return detectedVars.filter((name) => !declared.has(name));
-  })();
+  const parsedVars = parseKeyValueLines(systemPromptVars);
+
+  const missingVars = detectedVars.filter((name) => !(name in (parsedVars.entries || {})));
 
   const addMissingVars = () => {
     const lines = missingVars.map((name) => `${name}: `);
@@ -513,9 +511,15 @@ export default function ProviderDetailPage() {
     setSavedSystemPromptMode(mode);
   };
 
+  // Compare the canonical form on both sides. The saved copy comes from
+  // formatKeyValueLines, which emits "name: " — trailing space — for an empty value,
+  // so trimming only the live side made those two permanently unequal: saving worked
+  // but the button never settled. A parse error counts as dirty on purpose, so Save
+  // stays clickable and the operator can see the message instead of a dead button.
   const systemPromptDirty =
     systemPrompt.trim() !== savedSystemPrompt
-    || systemPromptVars.trim() !== savedSystemPromptVars
+    || !!parsedVars.error
+    || formatKeyValueLines(parsedVars.entries || {}) !== savedSystemPromptVars
     || systemPromptMode !== savedSystemPromptMode;
 
   const saveSystemPrompt = async () => {
