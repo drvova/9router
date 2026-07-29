@@ -79,6 +79,7 @@ export default function ProviderDetailPage() {
   const [savedSystemPromptVars, setSavedSystemPromptVars] = useState("");
   const [detectedVars, setDetectedVars] = useState([]);
   const [controlBlocks, setControlBlocks] = useState(0);
+  const [insideRawOnly, setInsideRawOnly] = useState([]);
   const [providerStickyLimit, setProviderStickyLimit] = useState("");
   const [thinkingMode, setThinkingMode] = useState("auto");
   const [autoPing, setAutoPing] = useState({ enabled: false, connections: {} });
@@ -503,7 +504,7 @@ export default function ProviderDetailPage() {
     let cancelled = false;
     const timer = setTimeout(async () => {
       if (!systemPrompt.trim()) {
-        if (!cancelled) { setDetectedVars([]); setControlBlocks(0); }
+        if (!cancelled) { setDetectedVars([]); setControlBlocks(0); setInsideRawOnly([]); }
         return;
       }
       try {
@@ -517,6 +518,7 @@ export default function ProviderDetailPage() {
         if (!cancelled) {
           setDetectedVars(data.variables || []);
           setControlBlocks(data.controlBlocks || 0);
+          setInsideRawOnly(data.insideRawOnly || []);
         }
       } catch {
         // Convenience only — a failed detection must not disturb the editor.
@@ -528,6 +530,12 @@ export default function ProviderDetailPage() {
   const parsedVars = parseKeyValueLines(systemPromptVars);
 
   const missingVars = detectedVars.filter((name) => !(name in (parsedVars.entries || {})));
+
+  // Stored values the prompt never substitutes, split by cause so the note can say why
+  // rather than just flagging them.
+  const unusedVars = Object.keys(parsedVars.entries || {}).filter((name) => !detectedVars.includes(name));
+  const unusedInsideRaw = unusedVars.filter((name) => insideRawOnly.includes(name));
+  const unusedNotInPrompt = unusedVars.filter((name) => !insideRawOnly.includes(name));
 
   const addMissingVars = () => {
     const lines = missingVars.map((name) => `${name}: `);
@@ -1917,6 +1925,26 @@ export default function ProviderDetailPage() {
             <span className="text-xs text-green-500">
               All {detectedVars.length} prompt variable{detectedVars.length === 1 ? "" : "s"} have values.
             </span>
+          )}
+          {unusedVars.length > 0 && (
+            <p className="text-xs text-text-muted">
+              {unusedVars.length} stored value{unusedVars.length === 1 ? " is" : "s are"} never used:{" "}
+              {unusedInsideRaw.length > 0 && (
+                <>
+                  <code className="break-all">{unusedInsideRaw.join(", ")}</code>{" "}
+                  {unusedInsideRaw.length === 1 ? "sits" : "sit"} inside <code>{"{% raw %}"}</code>, so the
+                  prompt sends {unusedInsideRaw.length === 1 ? "it" : "them"} verbatim.
+                </>
+              )}
+              {unusedInsideRaw.length > 0 && unusedNotInPrompt.length > 0 && " "}
+              {unusedNotInPrompt.length > 0 && (
+                <>
+                  <code className="break-all">{unusedNotInPrompt.join(", ")}</code>{" "}
+                  {unusedNotInPrompt.length === 1 ? "is" : "are"} not referenced by the prompt at all.
+                </>
+              )}{" "}
+              Safe to delete.
+            </p>
           )}
           <p className="text-xs text-text-muted">
             Optional. One <code>Name: Value</code> per line, available to the prompt as <code>{"{{ Name }}"}</code>. Dotted names nest, so <code>flags.Enabled: false</code> satisfies <code>{"{% if not flags.Enabled %}"}</code>. <code>true</code>/<code>false</code>/numbers are coerced. Built-ins: <code>provider alias model modelName format connection date time datetime</code> — your names win on clash.

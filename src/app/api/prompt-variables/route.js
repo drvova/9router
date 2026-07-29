@@ -22,7 +22,16 @@ export async function POST(request) {
     // correctly protected was warned about the very protection that fixed it.
     const unprotected = template.replace(/\{%-?\s*raw\s*%\}[\s\S]*?\{%-?\s*endraw\s*%\}/g, "");
     const controlBlocks = (unprotected.match(/\{%/g) || []).length;
-    return NextResponse.json({ variables, controlBlocks });
+
+    // Names the prompt mentions only inside a protected block. They are sent verbatim, so
+    // giving them a value changes nothing — and an editor that stays silent about that
+    // leaves the operator wondering why the values they typed are ignored.
+    const rawRegions = [...template.matchAll(/\{%-?\s*raw\s*%\}([\s\S]*?)\{%-?\s*endraw\s*%\}/g)]
+      .map((m) => m[1])
+      .join("\n");
+    const inRaw = rawRegions ? collectTemplateVariables(rawRegions) : [];
+    const insideRawOnly = inRaw.filter((name) => !variables.includes(name));
+    return NextResponse.json({ variables, controlBlocks, insideRawOnly });
   } catch (error) {
     console.log("Error detecting prompt variables:", error);
     return NextResponse.json({ error: "Failed to detect prompt variables" }, { status: 500 });
