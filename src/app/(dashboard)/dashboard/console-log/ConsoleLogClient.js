@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Card, Button } from "@/shared/components";
+import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { CONSOLE_LOG_CONFIG } from "@/shared/constants/config";
 
 const LOG_LEVEL_COLORS = {
@@ -22,8 +23,10 @@ function colorLine(line) {
 export default function ConsoleLogClient() {
   const [logs, setLogs] = useState([]);
   const [connected, setConnected] = useState(false);
+  const { copied, copy } = useCopyToClipboard();
   const logRef = useRef(null);
 
+  const handleCopy = () => copy(logs.join("\n"), "snapshot");
   const handleClear = async () => {
     try {
       await fetch("/api/translator/console-logs", { method: "DELETE" });
@@ -71,8 +74,25 @@ export default function ConsoleLogClient() {
   return (
     <div className="">
       <Card>
-        <div className="flex items-center justify-end px-4 pt-3 pb-2">
-          <Button size="sm" variant="outline" icon="delete" onClick={handleClear}>
+        <div className="flex items-center justify-end gap-2 px-4 pt-3 pb-2">
+          <Button
+            size="sm"
+            variant="outline"
+            icon={copied === "snapshot" ? "check" : "content_copy"}
+            disabled={logs.length === 0}
+            className="min-h-11 sm:min-h-7"
+            onClick={handleCopy}
+          >
+            {copied === "snapshot" ? "Copied" : "Copy snapshot"}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            icon="delete"
+            disabled={logs.length === 0}
+            className="min-h-11 sm:min-h-7"
+            onClick={handleClear}
+          >
             Clear
           </Button>
         </div>
