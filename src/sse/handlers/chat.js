@@ -234,6 +234,7 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
     // fallback to a different provider picks up that provider's prompt instead.
     const providerSystemPrompt = (chatSettings.providerSystemPrompt || {})[provider] || null;
     const providerSystemPromptVars = (chatSettings.providerSystemPromptVars || {})[provider] || null;
+    const providerSystemPromptMode = (chatSettings.providerSystemPromptMode || {})[provider] || "jinja";
     const result = await handleChatCore({
       body: { ...body, model: `${provider}/${model}` },
       modelInfo: { provider, model },
@@ -261,6 +262,7 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
       providerThinking,
       providerSystemPrompt,
       providerSystemPromptVars,
+      providerSystemPromptMode,
       // Detect source format by endpoint + body
       sourceFormatOverride: request?.url ? detectFormatByEndpoint(new URL(request.url).pathname, body) : null,
       onCredentialsRefreshed: async (newCreds) => {

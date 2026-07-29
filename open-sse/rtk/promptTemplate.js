@@ -61,6 +61,26 @@ function compile(source) {
   return entry;
 }
 
+// Substitute {{ name }} and nothing else, leaving {% %} byte-for-byte intact.
+// Needed because real client prompts are Jinja *source* that the vendor's own client
+// only does token substitution on — an upstream that fingerprints the prompt expects
+// the control blocks still present, so evaluating them fails the check.
+const VAR_RE = /\{\{\s*([A-Za-z_$][\w$]*(?:\.[\w$]+)*)\s*\}\}/g;
+
+export function substitutePromptVars(text, context) {
+  if (!text) return text;
+  return text.replace(VAR_RE, (match, path) => {
+    let value = context;
+    for (const key of path.split(".")) {
+      if (value == null || typeof value !== "object" || !(key in value)) return match;
+      value = value[key];
+    }
+    // Leave the placeholder visible rather than emitting "[object Object]"/"undefined".
+    if (value == null || typeof value === "object" || typeof value === "function") return match;
+    return String(value);
+  });
+}
+
 /**
  * Render a prompt template. Fail-open by design: a malformed template must never
  * take down a request, so any render error falls back to the raw text.
@@ -75,10 +95,12 @@ function compile(source) {
  * @param {object} context - Values available to the template
  * @param {object} [log] - Optional logger
  * @param {string} [tag] - Log tag for the fail-open warning
+ * @param {string} [mode] - "jinja" evaluates control blocks; "substitute" only fills {{ }}
  * @returns {string} Rendered text, or the original text on failure
  */
-export function renderPromptTemplate(text, context, log, tag = "SYSPROMPT") {
+export function renderPromptTemplate(text, context, log, tag = "SYSPROMPT", mode = "jinja") {
   if (!text || !text.includes("{")) return text;
+  if (mode === "substitute") return substitutePromptVars(text, context);
   try {
     const { template, roots } = compile(text);
     const scoped = { ...context };

@@ -226,3 +226,50 @@ describe("header templating is provider-agnostic", () => {
     expect(renderHeaderValues({ "X-Static": "plain" }, ctxFor("p"))["X-Static"]).toBe("plain");
   });
 });
+
+describe("substitute mode: fill {{ vars }}, leave {% %} untouched", () => {
+  // An upstream that checks the prompt it receives expects the control blocks
+  // unevaluated, because the vendor's own client only does token substitution.
+  const ctx = buildPromptContext(
+    { productName: "MyClient", dataFolderName: ".myclient" },
+    buildRuntimeVars({ provider: "p", alias: "a", model: "gpt-5.6-sol", format: "openai", connection: "k" })
+  );
+  const sub = (t) => renderPromptTemplate(t, ctx, null, "SYSPROMPT", "substitute");
+
+  it("substitutes variables but preserves every control block byte-for-byte", () => {
+    const tpl = "Powered by {{ modelName }} / {{ productName }}\n{%- if not f.X %}\nBlock\n{%- endif %}";
+    const out = sub(tpl);
+    expect(out).toContain("Powered by gpt-5.6-sol / MyClient");
+    expect(out).toContain("{%- if not f.X %}");
+    expect(out).toContain("{%- endif %}");
+    expect(out).toContain("Block");
+  });
+
+  it("keeps an if/else block intact instead of choosing a branch", () => {
+    const tpl = "{% if '\\u4e2d\\u6587' in ResponseLanguage %}\\u4e13\\u5bb6{% else %}Experts{% endif %}";
+    expect(sub(tpl)).toBe(tpl);
+  });
+
+  it("tolerates whitespace inside the braces and dotted paths", () => {
+    expect(sub("[{{modelName}}][{{  modelName  }}]")).toBe("[gpt-5.6-sol][gpt-5.6-sol]");
+    const nested = buildPromptContext({ "a.b": "deep" }, {});
+    expect(renderPromptTemplate("{{ a.b }}", nested, null, "T", "substitute")).toBe("deep");
+  });
+
+  it("leaves an unknown variable as its literal placeholder", () => {
+    // Silently blanking it would corrupt a prompt an upstream is checking.
+    expect(sub("[{{ nope }}]")).toBe("[{{ nope }}]");
+    expect(sub("[{{ a.missing }}]")).toBe("[{{ a.missing }}]");
+  });
+
+  it("never emits object or function stringifications", () => {
+    const c = buildPromptContext({}, { obj: { a: 1 }, fn: () => 1 });
+    expect(renderPromptTemplate("{{ obj }}|{{ fn }}", c, null, "T", "substitute")).toBe("{{ obj }}|{{ fn }}");
+  });
+
+  it("jinja mode still evaluates, so the modes are genuinely different", () => {
+    const tpl = "{% if 1 %}YES{% else %}NO{% endif %}";
+    expect(renderPromptTemplate(tpl, ctx, null, "T", "jinja")).toBe("YES");
+    expect(sub(tpl)).toBe(tpl);
+  });
+});

@@ -213,6 +213,11 @@ export class DefaultExecutor extends BaseExecutor {
       Object.assign(headers, renderHeaderValues(custom, {
         provider: this.provider,
         connection: credentials?.connectionName || "",
+        // Some clients send the key in a bespoke header as well as Authorization.
+        // Exposed to header templates only, never to the prompt context: the key
+        // already travels to this same upstream in Authorization, so this is not a
+        // new destination — but putting it in a prompt would land it in message logs.
+        apiKey: credentials?.apiKey || credentials?.accessToken || "",
         ...buildRequestVars(),
       }));
     }

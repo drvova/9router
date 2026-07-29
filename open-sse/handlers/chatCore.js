@@ -40,7 +40,7 @@ import { resolveSessionId } from "../utils/sessionManager.js";
  * @param {object} options.credentials - Provider credentials
  * @param {string} options.sourceFormatOverride - Override detected source format (e.g. "openai-responses")
  */
-export async function handleChatCore({ body, modelInfo, credentials, log, onCredentialsRefreshed, onRequestSuccess, onDisconnect, clientRawRequest, connectionId, userAgent, apiKey, ccFilterNaming, rtkEnabled, headroomEnabled, headroomUrl, headroomCompressUserMessages, cavemanEnabled, cavemanLevel, ponytailEnabled, ponytailLevel, pxpipeEnabled, pxpipeMinChars, pxpipeTimeoutMs, pxpipeTransform, onPxpipeEvent, sourceFormatOverride, providerThinking, providerSystemPrompt, providerSystemPromptVars }) {
+export async function handleChatCore({ body, modelInfo, credentials, log, onCredentialsRefreshed, onRequestSuccess, onDisconnect, clientRawRequest, connectionId, userAgent, apiKey, ccFilterNaming, rtkEnabled, headroomEnabled, headroomUrl, headroomCompressUserMessages, cavemanEnabled, cavemanLevel, ponytailEnabled, ponytailLevel, pxpipeEnabled, pxpipeMinChars, pxpipeTimeoutMs, pxpipeTransform, onPxpipeEvent, sourceFormatOverride, providerThinking, providerSystemPrompt, providerSystemPromptVars, providerSystemPromptMode }) {
   const { provider, model } = modelInfo;
   const requestStartTime = Date.now();
   // Stable per-session color so all lines of one CLI conversation share a tag
@@ -224,7 +224,7 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
     const promptContext = buildPromptContext(providerSystemPromptVars, buildRuntimeVars({
       provider, alias, model, format: finalFormat, connection: credentials?.connectionName,
     }));
-    const renderedPrompt = renderPromptTemplate(providerSystemPrompt, promptContext, log);
+    const renderedPrompt = renderPromptTemplate(providerSystemPrompt, promptContext, log, "SYSPROMPT", providerSystemPromptMode);
     translatedBody = injectSystemPrompt(translatedBody, finalFormat, renderedPrompt);
     xf.push("SYSPROMPT");
   }

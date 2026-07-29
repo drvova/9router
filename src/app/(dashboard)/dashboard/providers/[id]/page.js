@@ -70,6 +70,8 @@ export default function ProviderDetailPage() {
   const [systemPromptError, setSystemPromptError] = useState(null);
   const [systemPromptVars, setSystemPromptVars] = useState("");
   const [savedSystemPromptVars, setSavedSystemPromptVars] = useState("");
+  const [systemPromptMode, setSystemPromptMode] = useState("jinja");
+  const [savedSystemPromptMode, setSavedSystemPromptMode] = useState("jinja");
   const [providerStickyLimit, setProviderStickyLimit] = useState("");
   const [thinkingMode, setThinkingMode] = useState("auto");
   const [autoPing, setAutoPing] = useState({ enabled: false, connections: {} });
@@ -329,6 +331,9 @@ export default function ProviderDetailPage() {
       const storedVars = formatKeyValueLines((settingsData.providerSystemPromptVars || {})[providerId]);
       setSystemPromptVars(storedVars);
       setSavedSystemPromptVars(storedVars);
+      const storedMode = (settingsData.providerSystemPromptMode || {})[providerId] || "jinja";
+      setSystemPromptMode(storedMode);
+      setSavedSystemPromptMode(storedMode);
       const autoPingSettingsKey = AUTO_PING_SETTINGS_KEYS[providerId];
       const apCfg = autoPingSettingsKey ? settingsData[autoPingSettingsKey] || {} : {};
       setAutoPing({ enabled: apCfg.enabled === true, connections: apCfg.connections || {} });
@@ -418,7 +423,7 @@ export default function ProviderDetailPage() {
 
   // Single write path for the per-provider system prompt, shared by the card below
   // and the compatible-node edit modal. Throws so each caller surfaces its own error.
-  const persistSystemPrompt = async (value, varsText) => {
+  const persistSystemPrompt = async (value, varsText, mode = systemPromptMode) => {
     const { entries: vars, error: varsError } = parseKeyValueLines(varsText);
     if (varsError) throw new Error(varsError);
 
@@ -428,6 +433,9 @@ export default function ProviderDetailPage() {
 
     const prompts = { ...(settingsData.providerSystemPrompt || {}) };
     const varMaps = { ...(settingsData.providerSystemPromptVars || {}) };
+    const modes = { ...(settingsData.providerSystemPromptMode || {}) };
+    if (mode === "substitute") modes[providerId] = "substitute";
+    else delete modes[providerId];
     const trimmed = (value || "").trim();
     if (trimmed) prompts[providerId] = trimmed;
     else delete prompts[providerId];
@@ -437,7 +445,7 @@ export default function ProviderDetailPage() {
     const res = await fetch("/api/settings", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ providerSystemPrompt: prompts, providerSystemPromptVars: varMaps }),
+      body: JSON.stringify({ providerSystemPrompt: prompts, providerSystemPromptVars: varMaps, providerSystemPromptMode: modes }),
     });
     if (!res.ok) throw new Error("Failed to save system prompt");
 
@@ -446,16 +454,19 @@ export default function ProviderDetailPage() {
     setSavedSystemPrompt(trimmed);
     setSystemPromptVars(normalizedVars);
     setSavedSystemPromptVars(normalizedVars);
+    setSavedSystemPromptMode(mode);
   };
 
   const systemPromptDirty =
-    systemPrompt.trim() !== savedSystemPrompt || systemPromptVars.trim() !== savedSystemPromptVars;
+    systemPrompt.trim() !== savedSystemPrompt
+    || systemPromptVars.trim() !== savedSystemPromptVars
+    || systemPromptMode !== savedSystemPromptMode;
 
   const saveSystemPrompt = async () => {
     setSystemPromptSaving(true);
     setSystemPromptError(null);
     try {
-      await persistSystemPrompt(systemPrompt, systemPromptVars);
+      await persistSystemPrompt(systemPrompt, systemPromptVars, systemPromptMode);
     } catch (error) {
       setSystemPromptError(error.message);
     } finally {
@@ -1726,6 +1737,23 @@ export default function ProviderDetailPage() {
           />
           <p className="text-xs text-text-muted">
             Optional. One <code>Name: Value</code> per line, available to the prompt as <code>{"{{ Name }}"}</code>. Dotted names nest, so <code>flags.Enabled: false</code> satisfies <code>{"{% if not flags.Enabled %}"}</code>. <code>true</code>/<code>false</code>/numbers are coerced. Built-ins: <code>provider alias model modelName format connection date time datetime</code> — your names win on clash.
+          </p>
+        </div>
+        <div className="mt-4 flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-text-main" htmlFor="provider-system-prompt-mode">Template mode</label>
+          <select
+            id="provider-system-prompt-mode"
+            value={systemPromptMode}
+            onChange={(e) => setSystemPromptMode(e.target.value)}
+            className="w-full rounded-[10px] border border-transparent bg-surface-2 p-2 text-sm text-text-main focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+          >
+            <option value="jinja">{"Evaluate Jinja — {{ vars }} and {% if %} logic both run"}</option>
+            <option value="substitute">{"Substitute only — fill {{ vars }}, send {% %} verbatim"}</option>
+          </select>
+          <p className="text-xs text-text-muted">
+            Pick <strong>Substitute only</strong> when pasting a vendor prompt into an upstream that
+            checks the prompt it receives. Those clients do plain token substitution, so the control
+            blocks are expected to arrive unevaluated; stripping them can fail the check.
           </p>
         </div>
         {systemPromptError && (
