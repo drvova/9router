@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { collectTemplateVariables } from "open-sse/rtk/promptTemplate.js";
+import { collectTemplateVariables, BUILT_IN_VAR_NAMES } from "open-sse/rtk/promptTemplate.js";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +31,14 @@ export async function POST(request) {
       .join("\n");
     const inRaw = rawRegions ? collectTemplateVariables(rawRegions) : [];
     const insideRawOnly = inRaw.filter((name) => !variables.includes(name));
-    return NextResponse.json({ variables, controlBlocks, insideRawOnly });
+
+    // Built-ins are excluded from `variables` because the router supplies them, but the
+    // prompt still renders them. Reporting them separately stops a count of "variables
+    // you must supply" from reading as a count of variables in the prompt.
+    const builtInsUsed = BUILT_IN_VAR_NAMES.filter((name) =>
+      new RegExp(`\\{\\{\\s*${name}\\s*\\}\\}`).test(unprotected)
+    );
+    return NextResponse.json({ variables, controlBlocks, insideRawOnly, builtInsUsed });
   } catch (error) {
     console.log("Error detecting prompt variables:", error);
     return NextResponse.json({ error: "Failed to detect prompt variables" }, { status: 500 });

@@ -80,6 +80,7 @@ export default function ProviderDetailPage() {
   const [detectedVars, setDetectedVars] = useState([]);
   const [controlBlocks, setControlBlocks] = useState(0);
   const [insideRawOnly, setInsideRawOnly] = useState([]);
+  const [builtInsUsed, setBuiltInsUsed] = useState([]);
   const [providerStickyLimit, setProviderStickyLimit] = useState("");
   const [thinkingMode, setThinkingMode] = useState("auto");
   const [autoPing, setAutoPing] = useState({ enabled: false, connections: {} });
@@ -504,7 +505,9 @@ export default function ProviderDetailPage() {
     let cancelled = false;
     const timer = setTimeout(async () => {
       if (!systemPrompt.trim()) {
-        if (!cancelled) { setDetectedVars([]); setControlBlocks(0); setInsideRawOnly([]); }
+        if (!cancelled) {
+          setDetectedVars([]); setControlBlocks(0); setInsideRawOnly([]); setBuiltInsUsed([]);
+        }
         return;
       }
       try {
@@ -519,6 +522,7 @@ export default function ProviderDetailPage() {
           setDetectedVars(data.variables || []);
           setControlBlocks(data.controlBlocks || 0);
           setInsideRawOnly(data.insideRawOnly || []);
+          setBuiltInsUsed(data.builtInsUsed || []);
         }
       } catch {
         // Convenience only — a failed detection must not disturb the editor.
@@ -1914,8 +1918,8 @@ export default function ProviderDetailPage() {
             <div className="flex flex-wrap items-center gap-2 rounded-[10px] bg-brand-500/10 px-2 py-1.5">
               <span className="text-xs text-text-main">
                 {missingVars.length === 1
-                  ? "1 variable in the prompt has no value:"
-                  : `${missingVars.length} variables in the prompt have no value:`}
+                  ? "1 variable needs a value from you:"
+                  : `${missingVars.length} variables need values from you:`}
               </span>
               <code className="text-xs break-all">{missingVars.join(", ")}</code>
               <Button size="sm" variant="secondary" onClick={addMissingVars}>Add</Button>
@@ -1923,8 +1927,19 @@ export default function ProviderDetailPage() {
           )}
           {detectedVars.length > 0 && missingVars.length === 0 && (
             <span className="text-xs text-green-500">
-              All {detectedVars.length} prompt variable{detectedVars.length === 1 ? "" : "s"} have values.
+              {detectedVars.length === 1
+                ? "The 1 variable you supply is set."
+                : `All ${detectedVars.length} variables you supply are set.`}
             </span>
+          )}
+          {builtInsUsed.length > 0 && (
+            <p className="text-xs text-text-muted">
+              The prompt also renders <code className="break-all">{builtInsUsed.join(", ")}</code>,
+              supplied by the router — {builtInsUsed.length === 1 ? "it needs" : "they need"} no value here.
+              That is {detectedVars.length + builtInsUsed.length} variable
+              {detectedVars.length + builtInsUsed.length === 1 ? "" : "s"} in the prompt,{" "}
+              {detectedVars.length} of which {detectedVars.length === 1 ? "is" : "are"} yours.
+            </p>
           )}
           {unusedVars.length > 0 && (
             <p className="text-xs text-text-muted">
