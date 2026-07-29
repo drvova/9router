@@ -73,6 +73,7 @@ export default function ProviderDetailPage() {
   const [systemPromptMode, setSystemPromptMode] = useState("jinja");
   const [savedSystemPromptMode, setSavedSystemPromptMode] = useState("jinja");
   const [detectedVars, setDetectedVars] = useState([]);
+  const [controlBlocks, setControlBlocks] = useState(0);
   const [providerStickyLimit, setProviderStickyLimit] = useState("");
   const [thinkingMode, setThinkingMode] = useState("auto");
   const [autoPing, setAutoPing] = useState({ enabled: false, connections: {} });
@@ -429,7 +430,7 @@ export default function ProviderDetailPage() {
     let cancelled = false;
     const timer = setTimeout(async () => {
       if (!systemPrompt.trim()) {
-        if (!cancelled) setDetectedVars([]);
+        if (!cancelled) { setDetectedVars([]); setControlBlocks(0); }
         return;
       }
       try {
@@ -440,7 +441,10 @@ export default function ProviderDetailPage() {
         });
         if (!res.ok) return;
         const data = await res.json();
-        if (!cancelled) setDetectedVars(data.variables || []);
+        if (!cancelled) {
+          setDetectedVars(data.variables || []);
+          setControlBlocks(data.controlBlocks || 0);
+        }
       } catch {
         // Convenience only — a failed detection must not disturb the editor.
       }
@@ -1826,6 +1830,13 @@ export default function ProviderDetailPage() {
             <option value="jinja">{"Evaluate Jinja — {{ vars }} and {% if %} logic both run"}</option>
             <option value="substitute">{"Substitute only — fill {{ vars }}, send {% %} verbatim"}</option>
           </select>
+          {systemPromptMode === "jinja" && controlBlocks > 0 && (
+            <p className="text-xs text-yellow-500">
+              This prompt contains {controlBlocks} <code>{"{% %}"}</code> block
+              {controlBlocks === 1 ? "" : "s"}. Jinja mode evaluates them, so they will not reach the
+              provider. If this upstream checks the prompt it receives, switch to Substitute only.
+            </p>
+          )}
           <p className="text-xs text-text-muted">
             Pick <strong>Substitute only</strong> when pasting a vendor prompt into an upstream that
             checks the prompt it receives. Those clients do plain token substitution, so the control

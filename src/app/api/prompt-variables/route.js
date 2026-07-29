@@ -20,7 +20,11 @@ export async function POST(request) {
     }
 
     const variables = collectTemplateVariables(template, mode || "jinja");
-    return NextResponse.json({ variables });
+    // Count of {% %} blocks: jinja evaluates these away, substitute passes them
+    // through. An upstream that inspects the prompt it receives can reject the
+    // evaluated form, so the editor needs the count to warn before a request fails.
+    const controlBlocks = (template.match(/\{%/g) || []).length;
+    return NextResponse.json({ variables, controlBlocks });
   } catch (error) {
     console.log("Error detecting prompt variables:", error);
     return NextResponse.json({ error: "Failed to detect prompt variables" }, { status: 500 });
