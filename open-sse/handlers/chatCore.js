@@ -226,7 +226,9 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
     }));
     const renderedPrompt = renderPromptTemplate(providerSystemPrompt, promptContext, log, "SYSPROMPT", providerSystemPromptMode);
     translatedBody = injectSystemPrompt(translatedBody, finalFormat, renderedPrompt);
-    xf.push("SYSPROMPT");
+    // Name the mode: an upstream that checks the prompt it receives rejects one mode and
+    // accepts the other, and a bare "SYSPROMPT" gives no way to tell which was used.
+    xf.push(`SYSPROMPT:${providerSystemPromptMode === "substitute" ? "substitute" : "jinja"}`);
   }
 
   // Caveman: inject terse-style system prompt
