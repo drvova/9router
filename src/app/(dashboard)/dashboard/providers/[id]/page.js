@@ -68,6 +68,11 @@ export default function ProviderDetailPage() {
   const [savedSystemPrompt, setSavedSystemPrompt] = useState("");
   const [systemPromptSaving, setSystemPromptSaving] = useState(false);
   const [systemPromptError, setSystemPromptError] = useState(null);
+  const [nodeHeaders, setNodeHeaders] = useState("");
+  const [savedNodeHeaders, setSavedNodeHeaders] = useState("");
+  const [headersSaving, setHeadersSaving] = useState(false);
+  const [headersError, setHeadersError] = useState(null);
+  const [captureNote, setCaptureNote] = useState(null);
   const [systemPromptVars, setSystemPromptVars] = useState("");
   const [savedSystemPromptVars, setSavedSystemPromptVars] = useState("");
   const [detectedVars, setDetectedVars] = useState([]);
@@ -336,6 +341,11 @@ export default function ProviderDetailPage() {
       setAutoPing({ enabled: apCfg.enabled === true, connections: apCfg.connections || {} });
       if (nodesRes.ok) {
         let node = (nodesData.nodes || []).find((entry) => entry.id === providerId) || null;
+        if (node) {
+          const lines = formatKeyValueLines(node.headers);
+          setNodeHeaders(lines);
+          setSavedNodeHeaders(lines);
+        }
 
         // Newly created compatible nodes can be briefly unavailable on one worker.
         // Retry a few times before showing "Provider not found".
@@ -359,7 +369,7 @@ export default function ProviderDetailPage() {
     }
   }, [providerId, isCompatible]);
 
-  const handleUpdateNode = async ({ systemPrompt: nextSystemPrompt, systemPromptVars: nextSystemPromptVars, ...nodeFields }) => {
+  const handleUpdateNode = async (nodeFields) => {
     const res = await fetch(`/api/provider-nodes/${providerId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -367,12 +377,59 @@ export default function ProviderDetailPage() {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Failed to update provider node");
-    // The system prompt is not a node field — it lives in settings under the same
-    // key the System Prompt card writes, so both editors stay on one source of truth.
-    if (nextSystemPrompt !== undefined) await persistSystemPrompt(nextSystemPrompt, nextSystemPromptVars);
     setProviderNode(data.node);
     await fetchConnections();
     setShowEditNodeModal(false);
+  };
+
+  // Headers live on the node, so this reuses the node PUT and resends the fields it
+  // requires unchanged. Keeping them out of the edit modal stops that form growing a
+  // textarea per routing concern.
+  const saveNodeHeaders = async () => {
+    if (!providerNode) return;
+    setHeadersSaving(true);
+    setHeadersError(null);
+    try {
+      const res = await fetch(`/api/provider-nodes/${providerId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: providerNode.name,
+          prefix: providerNode.prefix,
+          apiType: providerNode.apiType,
+          baseUrl: providerNode.baseUrl,
+          headers: nodeHeaders,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to save headers");
+      setProviderNode(data.node);
+      const normalized = formatKeyValueLines(data.node.headers);
+      setNodeHeaders(normalized);
+      setSavedNodeHeaders(normalized);
+    } catch (error) {
+      setHeadersError(error.message);
+    } finally {
+      setHeadersSaving(false);
+    }
+  };
+
+  // Read on click: the capture is whatever the router last saw arrive for this provider,
+  // so fetching at press time is always current and needs no polling.
+  const useCapturedHeaders = async () => {
+    setCaptureNote(null);
+    try {
+      const res = await fetch(`/api/provider-nodes/${providerId}/captured-headers`, { cache: "no-store" });
+      const data = res.ok ? await res.json() : null;
+      if (!data?.capture) {
+        setCaptureNote("No client request seen for this provider yet.");
+        return;
+      }
+      setNodeHeaders(data.capture.lines);
+      setCaptureNote(`Filled ${data.capture.count} header${data.capture.count === 1 ? "" : "s"} from the last client request.`);
+    } catch (error) {
+      setCaptureNote(`Could not read the capture: ${error.message}`);
+    }
   };
 
   const saveProviderStrategy = async (strategy, stickyLimit) => {
@@ -1755,6 +1812,45 @@ export default function ProviderDetailPage() {
         </Card>
       )}
 
+      {/* Custom headers — node-level, compatible nodes only */}
+      {isCompatible && (
+        <Card>
+          <div className="mb-3 flex flex-col gap-1">
+            <h2 className="text-lg font-semibold">Custom Headers</h2>
+            <p className="text-xs text-text-muted">
+              Sent on every request to this provider and applied last, so these override the
+              defaults including <code>Authorization</code>. Values are templates:{" "}
+              <code>{"{{ uuid() }}"}</code>, <code>{"{{ traceId }}"}</code>.
+            </p>
+          </div>
+          <label className="sr-only" htmlFor="provider-node-headers">Custom Headers</label>
+          <textarea
+            id="provider-node-headers"
+            className="w-full rounded-[10px] border border-border bg-surface-2 p-2 text-sm font-mono resize-y min-h-[120px] text-text-main placeholder-text-muted/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary/60"
+            placeholder={"User-Agent: MyClient/1.0\nX-Request-ID: {{ requestId }}"}
+            value={nodeHeaders}
+            onChange={(e) => setNodeHeaders(e.target.value)}
+          />
+          {headersError && <p className="mt-2 text-xs text-red-500" role="alert">{headersError}</p>}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              onClick={saveNodeHeaders}
+              disabled={headersSaving || nodeHeaders.trim() === savedNodeHeaders.trim()}
+            >
+              {headersSaving ? "Saving..." : "Save"}
+            </Button>
+            <Button size="sm" variant="secondary" onClick={useCapturedHeaders}>
+              Use headers from last client request
+            </Button>
+            {captureNote && <span className="text-xs text-text-muted">{captureNote}</span>}
+            {nodeHeaders.trim() !== savedNodeHeaders.trim() && (
+              <span className="text-xs text-text-muted">Unsaved changes</span>
+            )}
+          </div>
+        </Card>
+      )}
+
       {/* Per-provider system prompt */}
       <Card>
         <div className="mb-3 flex flex-col gap-1">
@@ -1951,8 +2047,6 @@ export default function ProviderDetailPage() {
         <EditCompatibleNodeModal
           isOpen={showEditNodeModal}
           node={providerNode}
-          systemPrompt={savedSystemPrompt}
-          systemPromptVars={savedSystemPromptVars}
           onSave={handleUpdateNode}
           onClose={() => setShowEditNodeModal(false)}
           isAnthropic={isAnthropicCompatible}

@@ -3,17 +3,13 @@
 import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import { Button, Badge, Input, Modal, Select } from "@/shared/components";
-import { formatKeyValueLines } from "@/shared/utils";
 
-export default function EditCompatibleNodeModal({ isOpen, node, systemPrompt = "", systemPromptVars = "", onSave, onClose, isAnthropic }) {
+export default function EditCompatibleNodeModal({ isOpen, node, onSave, onClose, isAnthropic }) {
   const [formData, setFormData] = useState({
     name: "",
     prefix: "",
     apiType: "chat",
     baseUrl: "https://api.openai.com/v1",
-    headers: "",
-    systemPrompt: "",
-    systemPromptVars: "",
   });
   const [saving, setSaving] = useState(false);
   const [checkKey, setCheckKey] = useState("");
@@ -21,45 +17,6 @@ export default function EditCompatibleNodeModal({ isOpen, node, systemPrompt = "
   const [validating, setValidating] = useState(false);
   const [validationResult, setValidationResult] = useState(null);
   const [saveError, setSaveError] = useState(null);
-  const [captureLoading, setCaptureLoading] = useState(false);
-  const [captureNote, setCaptureNote] = useState(null);
-
-  useEffect(() => {
-    if (node) {
-      setFormData({
-        name: node.name || "",
-        prefix: node.prefix || "",
-        apiType: node.apiType || "chat",
-        baseUrl: node.baseUrl || (isAnthropic ? "https://api.anthropic.com/v1" : "https://api.openai.com/v1"),
-        headers: formatKeyValueLines(node.headers),
-        systemPrompt,
-        systemPromptVars,
-      });
-    }
-  }, [node, isAnthropic, systemPrompt, systemPromptVars]);
-
-  // Fetched on click rather than on open: the capture lives in server memory and can
-  // appear at any moment, so reading it when the button is pressed is always current.
-  const useCapturedHeaders = async () => {
-    if (!node?.id) return;
-    setCaptureLoading(true);
-    setCaptureNote(null);
-    try {
-      const res = await fetch(`/api/provider-nodes/${node.id}/captured-headers`, { cache: "no-store" });
-      const data = res.ok ? await res.json() : null;
-      if (!data?.capture) {
-        setCaptureNote("No client request seen for this provider yet. Point the client at this router and send one request.");
-        return;
-      }
-      setFormData((prev) => ({ ...prev, headers: data.capture.lines }));
-      setCaptureNote(`Applied ${data.capture.count} header${data.capture.count === 1 ? "" : "s"} from the last client request.`);
-    } catch (error) {
-      setCaptureNote(`Could not read the capture: ${error.message}`);
-    } finally {
-      setCaptureLoading(false);
-    }
-  };
-
   const apiTypeOptions = [
     { value: "chat", label: "Chat Completions" },
     { value: "responses", label: "Responses API" },
@@ -74,9 +31,6 @@ export default function EditCompatibleNodeModal({ isOpen, node, systemPrompt = "
         name: formData.name,
         prefix: formData.prefix,
         baseUrl: formData.baseUrl,
-        headers: formData.headers,
-        systemPrompt: formData.systemPrompt,
-        systemPromptVars: formData.systemPromptVars,
       };
       if (!isAnthropic) {
         payload.apiType = formData.apiType;
@@ -165,59 +119,6 @@ export default function EditCompatibleNodeModal({ isOpen, node, systemPrompt = "
         </div>
 
         <div className="flex flex-col gap-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-text-muted">Request</p>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-text-main" htmlFor="edit-node-headers">Custom Headers</label>
-          <textarea
-            id="edit-node-headers"
-            className="w-full rounded-[10px] border border-border bg-surface-2 p-2 text-sm resize-y text-text-main placeholder-text-muted/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary/60 font-mono min-h-[80px]"
-            placeholder={"User-Agent: MyClient/1.0\nX-Client-Name: my-client"}
-            value={formData.headers}
-            onChange={(e) => setFormData({ ...formData, headers: e.target.value })}
-          />
-          <p className="text-xs text-text-muted">
-            One <code>Name: Value</code> per line. Applied last, so these override the defaults
-            including <code>Authorization</code>. Values are templates: <code>{"{{ uuid() }}"}</code>.
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" variant="secondary" onClick={useCapturedHeaders} disabled={captureLoading}>
-              {captureLoading ? "Checking..." : "Use headers from last client request"}
-            </Button>
-            {captureNote && <span className="text-xs text-text-muted">{captureNote}</span>}
-          </div>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-text-main" htmlFor="edit-node-system-prompt">System Prompt</label>
-          <textarea
-            id="edit-node-system-prompt"
-            className="w-full rounded-[10px] border border-border bg-surface-2 p-2 text-sm resize-y text-text-main placeholder-text-muted/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary/60 min-h-[140px]"
-            placeholder="e.g. Always answer in British English. Prefer tables over prose."
-            value={formData.systemPrompt}
-            onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
-          />
-          <p className="text-xs text-text-muted">
-            Appended to this node&apos;s requests only. Rendered as a Jinja template; wrap a block
-            in <code>{"{% raw %}"}</code> to send it unevaluated.
-          </p>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-text-main" htmlFor="edit-node-system-prompt-vars">Variables</label>
-          <textarea
-            id="edit-node-system-prompt-vars"
-            className="w-full rounded-[10px] border border-border bg-surface-2 p-2 text-sm resize-y text-text-main placeholder-text-muted/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary/60 font-mono min-h-[80px]"
-            placeholder={"productName: MyClient\ndataFolderName: .myclient\nfeatures.DisableUploads: false"}
-            value={formData.systemPromptVars}
-            onChange={(e) => setFormData({ ...formData, systemPromptVars: e.target.value })}
-          />
-          <p className="text-xs text-text-muted">
-            One <code>Name: Value</code> per line, read as <code>{"{{ Name }}"}</code>. Dotted names
-            nest; <code>true</code>/<code>false</code>/numbers are coerced. Built-ins such as
-            <code>model</code> and <code>provider</code> are always available.
-          </p>
-        </div>
-        </div>
-
-        <div className="flex flex-col gap-4">
           <p className="text-xs font-medium uppercase tracking-wide text-text-muted">Test connection</p>
         <div className="flex gap-2">
           <Input
@@ -263,10 +164,7 @@ EditCompatibleNodeModal.propTypes = {
     prefix: PropTypes.string,
     apiType: PropTypes.string,
     baseUrl: PropTypes.string,
-    headers: PropTypes.object,
   }),
-  systemPrompt: PropTypes.string,
-  systemPromptVars: PropTypes.string,
   onSave: PropTypes.func.isRequired,
   onClose: PropTypes.func.isRequired,
   isAnthropic: PropTypes.bool,
