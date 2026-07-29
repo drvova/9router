@@ -90,8 +90,25 @@ export default function EditCompatibleNodeModal({ isOpen, node, systemPrompt = "
   if (!node) return null;
 
   return (
-    <Modal isOpen={isOpen} title={`Edit ${isAnthropic ? "Anthropic" : "OpenAI"} Compatible`} onClose={onClose}>
-      <div className="flex flex-col gap-4">
+    <Modal
+      isOpen={isOpen}
+      title={`Edit ${isAnthropic ? "Anthropic" : "OpenAI"} Compatible`}
+      onClose={onClose}
+      footer={
+        <>
+          <Button onClick={onClose} variant="ghost">Cancel</Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={!formData.name.trim() || !formData.prefix.trim() || !formData.baseUrl.trim() || saving}
+          >
+            {saving ? "Saving..." : "Save"}
+          </Button>
+        </>
+      }
+    >
+      {/* gap-8 between sections against gap-4 within, so the grouping reads without rules */}
+      <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-4">
         <Input
           label="Name"
           value={formData.name}
@@ -121,47 +138,57 @@ export default function EditCompatibleNodeModal({ isOpen, node, systemPrompt = "
           placeholder={isAnthropic ? "https://api.anthropic.com/v1" : "https://api.openai.com/v1"}
           hint={`Use the base URL (ending in /v1) for your ${isAnthropic ? "Anthropic" : "OpenAI"}-compatible API.`}
         />
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-text-muted">Request</p>
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium text-text-main" htmlFor="edit-node-headers">Custom Headers</label>
           <textarea
             id="edit-node-headers"
-            className="w-full rounded-[10px] border border-transparent bg-surface-2 p-2 text-sm font-mono resize-y min-h-[80px] text-text-main placeholder-text-muted/70 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+            className="w-full rounded-[10px] border border-border bg-surface-2 p-2 text-sm resize-y text-text-main placeholder-text-muted/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary/60 font-mono min-h-[80px]"
             placeholder={"User-Agent: MyClient/1.0\nX-Client-Name: my-client"}
             value={formData.headers}
             onChange={(e) => setFormData({ ...formData, headers: e.target.value })}
           />
           <p className="text-xs text-text-muted">
-            Optional. One <code>Name: Value</code> per line. Sent on every request and applied last, so these override the defaults (including Authorization). Use for upstreams that gate on client identity.
+            One <code>Name: Value</code> per line. Applied last, so these override the defaults
+            including <code>Authorization</code>. Values are templates: <code>{"{{ uuid() }}"}</code>.
           </p>
         </div>
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium text-text-main" htmlFor="edit-node-system-prompt">System Prompt</label>
           <textarea
             id="edit-node-system-prompt"
-            className="w-full rounded-[10px] border border-transparent bg-surface-2 p-2 text-sm resize-y min-h-[80px] text-text-main placeholder-text-muted/70 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+            className="w-full rounded-[10px] border border-border bg-surface-2 p-2 text-sm resize-y text-text-main placeholder-text-muted/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary/60 min-h-[140px]"
             placeholder="e.g. Always answer in British English. Prefer tables over prose."
             value={formData.systemPrompt}
             onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
           />
           <p className="text-xs text-text-muted">
-            Optional. Appended to the system message of every chat request routed to this node,
-            and to this node only. Fallback to another provider uses that provider&apos;s prompt instead.
-            Rendered as a Jinja template, so <code>{"{{ model }}"}</code> and <code>{"{% if %}"}</code> work.
+            Appended to this node&apos;s requests only. Rendered as a Jinja template; wrap a block
+            in <code>{"{% raw %}"}</code> to send it unevaluated.
           </p>
         </div>
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium text-text-main" htmlFor="edit-node-system-prompt-vars">Variables</label>
           <textarea
             id="edit-node-system-prompt-vars"
-            className="w-full rounded-[10px] border border-transparent bg-surface-2 p-2 text-sm font-mono resize-y min-h-[80px] text-text-main placeholder-text-muted/70 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+            className="w-full rounded-[10px] border border-border bg-surface-2 p-2 text-sm resize-y text-text-main placeholder-text-muted/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary/60 font-mono min-h-[80px]"
             placeholder={"productName: MyClient\ndataFolderName: .myclient\nfeatures.DisableUploads: false"}
             value={formData.systemPromptVars}
             onChange={(e) => setFormData({ ...formData, systemPromptVars: e.target.value })}
           />
           <p className="text-xs text-text-muted">
-            Optional. One <code>Name: Value</code> per line, available to the prompt as <code>{"{{ Name }}"}</code>. Dotted names nest, so <code>flags.Enabled: false</code> satisfies <code>{"{% if not flags.Enabled %}"}</code>. <code>true</code>/<code>false</code>/numbers are coerced. Built-ins: <code>provider alias model modelName format connection date time datetime</code> — your names win on clash.
+            One <code>Name: Value</code> per line, read as <code>{"{{ Name }}"}</code>. Dotted names
+            nest; <code>true</code>/<code>false</code>/numbers are coerced. Built-ins such as
+            <code>model</code> and <code>provider</code> are always available.
           </p>
         </div>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-text-muted">Test connection</p>
         <div className="flex gap-2">
           <Input
             label="API Key (for Check)"
@@ -188,17 +215,11 @@ export default function EditCompatibleNodeModal({ isOpen, node, systemPrompt = "
             {validationResult === "success" ? "Valid" : "Invalid"}
           </Badge>
         )}
-        {saveError && (
-          <p className="text-xs text-red-500">{saveError}</p>
-        )}
-        <div className="flex gap-2">
-          <Button onClick={handleSubmit} fullWidth disabled={!formData.name.trim() || !formData.prefix.trim() || !formData.baseUrl.trim() || saving}>
-            {saving ? "Saving..." : "Save"}
-          </Button>
-          <Button onClick={onClose} variant="ghost" fullWidth>
-            Cancel
-          </Button>
         </div>
+
+        {saveError && (
+          <p className="text-xs text-red-500" role="alert">{saveError}</p>
+        )}
       </div>
     </Modal>
   );

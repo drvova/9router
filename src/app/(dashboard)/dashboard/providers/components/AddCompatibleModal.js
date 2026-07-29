@@ -141,7 +141,24 @@ function AddCompatibleModal({ variant, isOpen, onClose, onCreated }) {
   };
 
   return (
-    <Modal isOpen={isOpen} title={config.title} onClose={onClose}>
+    <Modal
+      isOpen={isOpen}
+      title={config.title}
+      onClose={onClose}
+      footer={
+        <>
+          <Button onClick={onClose} variant="ghost">Cancel</Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={
+              !formData.name.trim() || !formData.prefix.trim() || !formData.baseUrl.trim() || submitting
+            }
+          >
+            {submitting ? "Creating..." : "Create"}
+          </Button>
+        </>
+      }
+    >
       <div className="flex flex-col gap-4">
         <Input
           label="Name"
@@ -176,7 +193,7 @@ function AddCompatibleModal({ variant, isOpen, onClose, onCreated }) {
           <label className="text-sm font-medium text-text-main" htmlFor="add-node-headers">Custom Headers</label>
           <textarea
             id="add-node-headers"
-            className="w-full rounded-[10px] border border-transparent bg-surface-2 p-2 text-sm font-mono resize-y min-h-[80px] text-text-main placeholder-text-muted/70 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+            className="w-full rounded-[10px] border border-border bg-surface-2 p-2 text-sm font-mono resize-y min-h-[80px] text-text-main placeholder-text-muted/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary/60"
             placeholder={"User-Agent: MyClient/1.0\nX-Client-Name: my-client"}
             value={formData.headers}
             onChange={(e) => setFormData({ ...formData, headers: e.target.value })}
@@ -210,25 +227,8 @@ function AddCompatibleModal({ variant, isOpen, onClose, onCreated }) {
           {renderValidationResult()}
         </div>
         {submitError && (
-          <p className="text-xs text-red-500">{submitError}</p>
+          <p className="text-xs text-red-500" role="alert">{submitError}</p>
         )}
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Button
-            onClick={handleSubmit}
-            fullWidth
-            disabled={
-              !formData.name.trim() ||
-              !formData.prefix.trim() ||
-              !formData.baseUrl.trim() ||
-              submitting
-            }
-          >
-            {submitting ? "Creating..." : "Create"}
-          </Button>
-          <Button onClick={onClose} variant="ghost" fullWidth>
-            Cancel
-          </Button>
-        </div>
       </div>
     </Modal>
   );

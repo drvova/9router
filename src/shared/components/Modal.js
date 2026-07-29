@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useId, useRef } from "react";
 import { cn } from "@/shared/utils/cn";
 import Button from "./Button";
 import Tooltip from "./Tooltip";
@@ -24,6 +24,10 @@ export default function Modal({
     full: "max-w-4xl",
   };
 
+  const titleId = useId();
+  const panelRef = useRef(null);
+  const triggerRef = useRef(null);
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
@@ -31,6 +35,23 @@ export default function Modal({
       document.body.style.overflow = "";
     }
     return () => { document.body.style.overflow = ""; };
+  }, [isOpen]);
+
+  // Move focus into the dialog on open and hand it back to whatever opened it on
+  // close. Without this the caret stays on the trigger behind the overlay, so the
+  // first Tab walks the page underneath instead of the form.
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    triggerRef.current = document.activeElement;
+    const panel = panelRef.current;
+    const first = panel?.querySelector(
+      "input:not([type=hidden]), textarea, select, button, [href], [tabindex]:not([tabindex='-1'])"
+    );
+    first?.focus();
+    return () => {
+      const trigger = triggerRef.current;
+      if (trigger && document.contains(trigger)) trigger.focus();
+    };
   }, [isOpen]);
 
   useEffect(() => {
@@ -53,6 +74,10 @@ export default function Modal({
 
       {/* Modal content */}
       <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? titleId : undefined}
         className={cn(
           "relative w-full bg-surface",
           "border border-border-subtle",
@@ -84,7 +109,7 @@ export default function Modal({
                 </div>
               )}
               {title && (
-                <h2 className="text-lg font-semibold text-text-main">{title}</h2>
+                <h2 id={titleId} className="text-lg font-semibold text-text-main">{title}</h2>
               )}
             </div>
             {/* X button — mobile only */}
@@ -99,7 +124,7 @@ export default function Modal({
         )}
 
         {/* Body */}
-        <div className="p-6 max-h-[calc(85vh-100px)] overflow-y-auto custom-scrollbar">{children}</div>
+        <div className="p-6 max-h-[calc(85vh-100px)] overflow-y-auto overscroll-contain custom-scrollbar">{children}</div>
 
         {/* Footer */}
         {footer && (
