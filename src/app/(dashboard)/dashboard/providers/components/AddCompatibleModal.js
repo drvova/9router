@@ -173,8 +173,9 @@ function AddCompatibleModal({ variant, isOpen, onClose, onCreated }) {
           hint={config.baseUrlHint}
         />
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-text-main">Custom Headers</label>
+          <label className="text-sm font-medium text-text-main" htmlFor="add-node-headers">Custom Headers</label>
           <textarea
+            id="add-node-headers"
             className="w-full rounded-[10px] border border-transparent bg-surface-2 p-2 text-sm font-mono resize-y min-h-[80px] text-text-main placeholder-text-muted/70 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
             placeholder={"User-Agent: MyClient/1.0\nX-Client-Name: my-client"}
             value={formData.headers}

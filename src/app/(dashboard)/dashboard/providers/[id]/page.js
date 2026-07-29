@@ -1707,15 +1707,18 @@ export default function ProviderDetailPage() {
             back to the raw text rather than failing the request.
           </p>
         </div>
+        <label className="sr-only" htmlFor="provider-system-prompt">System Prompt</label>
         <textarea
-          className="w-full rounded-[10px] border border-transparent bg-surface-2 p-2 text-sm resize-y min-h-[100px] text-text-main placeholder-text-muted/70 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+          id="provider-system-prompt"
+          className="w-full rounded-[10px] border border-transparent bg-surface-2 p-2 text-sm resize-y min-h-[220px] text-text-main placeholder-text-muted/70 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
           placeholder="e.g. Always answer in British English. Prefer tables over prose."
           value={systemPrompt}
           onChange={(e) => setSystemPrompt(e.target.value)}
         />
         <div className="mt-4 flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-text-main">Variables</label>
+          <label className="text-sm font-medium text-text-main" htmlFor="provider-system-prompt-vars">Variables</label>
           <textarea
+            id="provider-system-prompt-vars"
             className="w-full rounded-[10px] border border-transparent bg-surface-2 p-2 text-sm font-mono resize-y min-h-[80px] text-text-main placeholder-text-muted/70 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
             placeholder={"productName: MyClient\ndataFolderName: .myclient\nfeatures.DisableUploads: false"}
             value={systemPromptVars}

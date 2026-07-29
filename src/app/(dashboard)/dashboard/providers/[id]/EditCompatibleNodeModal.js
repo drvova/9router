@@ -122,8 +122,9 @@ export default function EditCompatibleNodeModal({ isOpen, node, systemPrompt = "
           hint={`Use the base URL (ending in /v1) for your ${isAnthropic ? "Anthropic" : "OpenAI"}-compatible API.`}
         />
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-text-main">Custom Headers</label>
+          <label className="text-sm font-medium text-text-main" htmlFor="edit-node-headers">Custom Headers</label>
           <textarea
+            id="edit-node-headers"
             className="w-full rounded-[10px] border border-transparent bg-surface-2 p-2 text-sm font-mono resize-y min-h-[80px] text-text-main placeholder-text-muted/70 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
             placeholder={"User-Agent: MyClient/1.0\nX-Client-Name: my-client"}
             value={formData.headers}
@@ -134,8 +135,9 @@ export default function EditCompatibleNodeModal({ isOpen, node, systemPrompt = "
           </p>
         </div>
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-text-main">System Prompt</label>
+          <label className="text-sm font-medium text-text-main" htmlFor="edit-node-system-prompt">System Prompt</label>
           <textarea
+            id="edit-node-system-prompt"
             className="w-full rounded-[10px] border border-transparent bg-surface-2 p-2 text-sm resize-y min-h-[80px] text-text-main placeholder-text-muted/70 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
             placeholder="e.g. Always answer in British English. Prefer tables over prose."
             value={formData.systemPrompt}
@@ -148,8 +150,9 @@ export default function EditCompatibleNodeModal({ isOpen, node, systemPrompt = "
           </p>
         </div>
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-text-main">Variables</label>
+          <label className="text-sm font-medium text-text-main" htmlFor="edit-node-system-prompt-vars">Variables</label>
           <textarea
+            id="edit-node-system-prompt-vars"
             className="w-full rounded-[10px] border border-transparent bg-surface-2 p-2 text-sm font-mono resize-y min-h-[80px] text-text-main placeholder-text-muted/70 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
             placeholder={"productName: MyClient\ndataFolderName: .myclient\nfeatures.DisableUploads: false"}
             value={formData.systemPromptVars}
