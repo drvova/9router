@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
-import { Button, Badge, Input, Modal, Select } from "@/shared/components";
+import { CurlHeaderImport, Button, Badge, Input, Modal, Select } from "@/shared/components";
 import { formatKeyValueLines } from "@/shared/utils";
 
 export default function EditCompatibleNodeModal({ isOpen, node, systemPrompt = "", systemPromptVars = "", onSave, onClose, isAnthropic }) {
@@ -155,6 +155,7 @@ export default function EditCompatibleNodeModal({ isOpen, node, systemPrompt = "
             One <code>Name: Value</code> per line. Applied last, so these override the defaults
             including <code>Authorization</code>. Values are templates: <code>{"{{ uuid() }}"}</code>.
           </p>
+          <CurlHeaderImport onImport={(lines) => setFormData((prev) => ({ ...prev, headers: lines }))} />
         </div>
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium text-text-main" htmlFor="edit-node-system-prompt">System Prompt</label>
