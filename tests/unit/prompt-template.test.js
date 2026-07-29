@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPromptContext, buildRuntimeVars, renderPromptTemplate } from "../../open-sse/rtk/promptTemplate.js";
+import { buildPromptContext, buildRequestVars, buildRuntimeVars, renderHeaderValues, renderPromptTemplate } from "../../open-sse/rtk/promptTemplate.js";
 
 const ctx = (vars, runtime = {}) => buildPromptContext(vars, buildRuntimeVars({
   provider: "openai-compatible-chat-abc",
@@ -129,5 +129,59 @@ describe("buildPromptContext", () => {
   it("coerces booleans, numbers and null but leaves other strings alone", () => {
     const c = buildPromptContext({ t: "true", f: "false", n: "42", z: "null", s: "hi", e: "" }, {});
     expect(c).toEqual({ t: true, f: false, n: 42, z: null, s: "hi", e: "" });
+  });
+});
+
+describe("renderHeaderValues", () => {
+  // Mirrors a real client's header block: correlated ids reused across several headers,
+  // independent uuids where the client emits independent ones, fresh on every request.
+  const WORKBUDDY = {
+    "X-Conversation-ID": "{{ uuid() }}",
+    "X-Conversation-Request-ID": "{{ uuid() }}",
+    "X-Conversation-Message-ID": "{{ requestId }}",
+    "X-Request-ID": "{{ requestId }}",
+    traceparent: "00-{{ traceId }}-{{ spanId }}-01",
+    b3: "{{ traceId }}-{{ spanId }}-1",
+    "X-B3-TraceId": "{{ traceId }}",
+    "X-B3-SpanId": "{{ spanId }}",
+    "X-B3-Sampled": "1",
+    "X-Product-Version": "5.2.7",
+  };
+  const render = () => renderHeaderValues(WORKBUDDY, { provider: "p", connection: "Key 1", ...buildRequestVars() });
+
+  it("reuses one id where the client reuses it", () => {
+    const h = render();
+    expect(h["X-Conversation-Message-ID"]).toBe(h["X-Request-ID"]);
+    expect(h.b3).toBe(`${h["X-B3-TraceId"]}-${h["X-B3-SpanId"]}-1`);
+    expect(h.traceparent).toBe(`00-${h["X-B3-TraceId"]}-${h["X-B3-SpanId"]}-01`);
+  });
+
+  it("emits independent values where the client emits independent ones", () => {
+    const h = render();
+    expect(h["X-Conversation-ID"]).not.toBe(h["X-Conversation-Request-ID"]);
+  });
+
+  it("produces W3C-shaped trace ids", () => {
+    const h = render();
+    expect(h.traceparent).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-01$/);
+  });
+
+  it("is fresh per request — a static value would repeat", () => {
+    expect(render()["X-Request-ID"]).not.toBe(render()["X-Request-ID"]);
+  });
+
+  it("leaves literal values alone", () => {
+    expect(render()["X-Product-Version"]).toBe("5.2.7");
+    expect(render()["X-B3-Sampled"]).toBe("1");
+  });
+
+  it("strips CR/LF so a rendered value cannot inject a header", () => {
+    const out = renderHeaderValues({ "X-Name": "{{ connection }}" }, { connection: "a\r\nX-Evil: 1" });
+    expect(out["X-Name"]).toBe("a X-Evil: 1");
+  });
+
+  it("falls back to the raw value on a broken template", () => {
+    const out = renderHeaderValues({ "X-A": "{% if %}" }, {});
+    expect(out["X-A"]).toBe("{% if %}");
   });
 });

@@ -7,6 +7,7 @@ import { getCachedClaudeHeaders } from "../utils/claudeHeaderCache.js";
 import { proxyAwareFetch } from "../utils/proxyFetch.js";
 import { injectReasoningContent } from "../utils/reasoningContentInjector.js";
 import { stripUnsupportedParams } from "../translator/concerns/paramSupport.js";
+import { renderHeaderValues, buildRequestVars } from "../rtk/promptTemplate.js";
 
 // Auth header descriptors — derived from registry transport.auth, fallback to hardcoded defaults.
 const BEARER = { combined: true, header: "Authorization", scheme: "bearer" };
@@ -204,9 +205,17 @@ export class DefaultExecutor extends BaseExecutor {
 
     if (stream) headers["Accept"] = "text/event-stream";
     // Per-node custom headers (compatible nodes) applied last — upstreams that gate on
-    // client identity need to override UA/Accept/auth defaults.
+    // client identity need to override UA/Accept/auth defaults. Values are templates, so
+    // a client whose fingerprint includes per-request ids (X-Request-ID, traceparent, b3)
+    // can be reproduced from config: a static uuid would be the same on every call.
     const custom = credentials?.providerSpecificData?.headers;
-    if (custom) Object.assign(headers, custom);
+    if (custom) {
+      Object.assign(headers, renderHeaderValues(custom, {
+        provider: this.provider,
+        connection: credentials?.connectionName || "",
+        ...buildRequestVars(),
+      }));
+    }
     return headers;
   }
 

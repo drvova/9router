@@ -4,11 +4,17 @@
 // because it exists solely to produce the text that injector appends.
 
 import nunjucks from "nunjucks";
+import { randomUUID, randomBytes } from "crypto";
 
 // No loader on purpose: renderString needs none, and its absence means {% include %}
 // and {% extends %} cannot reach the filesystem. autoescape off because this is a
 // prompt, not HTML — escaping would mangle quotes, markdown and CJK-adjacent markup.
 const env = new nunjucks.Environment(null, { autoescape: false, throwOnUndefined: false });
+
+// Fresh value on every call, for templates needing more than the correlated ids below
+// (a client sending two unrelated conversation uuids, say).
+env.addGlobal("uuid", () => randomUUID());
+env.addGlobal("hex", (length = 32) => randomBytes(Math.ceil(length / 2)).toString("hex").slice(0, length));
 
 // Names nunjucks resolves itself. Seeding these as empty strings would break them —
 // `range: ""` turns {% for i in range(3) %} into "Unable to call `range`".
@@ -68,9 +74,10 @@ function compile(source) {
  * @param {string} text - Template source
  * @param {object} context - Values available to the template
  * @param {object} [log] - Optional logger
+ * @param {string} [tag] - Log tag for the fail-open warning
  * @returns {string} Rendered text, or the original text on failure
  */
-export function renderPromptTemplate(text, context, log) {
+export function renderPromptTemplate(text, context, log, tag = "SYSPROMPT") {
   if (!text || !text.includes("{")) return text;
   try {
     const { template, roots } = compile(text);
@@ -78,7 +85,7 @@ export function renderPromptTemplate(text, context, log) {
     for (const name of roots) if (!(name in scoped)) scoped[name] = "";
     return template.render(scoped);
   } catch (error) {
-    log?.warn?.("SYSPROMPT", `template render failed, sending raw text: ${error.message}`);
+    log?.warn?.(tag, `template render failed, sending raw text: ${error.message}`);
     return text;
   }
 }
@@ -119,6 +126,46 @@ export function buildPromptContext(vars, runtime) {
 }
 
 /**
+ * Correlated per-request identifiers. Clients that emit distributed-tracing headers
+ * reuse one trace id across several of them (traceparent, b3, X-B3-TraceId, X-Trace-ID
+ * all carry the same value), so these are generated together and stay stable within a
+ * single render — {{ uuid() }} is the escape hatch when a fresh value is wanted instead.
+ * @returns {object} { requestId, conversationId, traceId, spanId }
+ */
+export function buildRequestVars() {
+  return {
+    requestId: randomBytes(16).toString("hex"),
+    conversationId: randomUUID(),
+    traceId: randomBytes(16).toString("hex"),
+    spanId: randomBytes(8).toString("hex"),
+  };
+}
+
+// A header value cannot carry CR or LF. Template inputs are validated on save, but a
+// rendered variable could still introduce one, and fetch would reject the whole request.
+const stripLineBreaks = (value) => value.replace(/[\r\n]+/g, " ");
+
+/**
+ * Render each custom header value as a template. Same engine as the system prompt, so
+ * a per-request X-Request-ID or traceparent is expressible in config rather than code.
+ * Context is limited to values in scope at header-build time: executors are cached
+ * singletons, so stashing the model on the instance would race across concurrent requests.
+ * @param {object} headers - { name: templateString }
+ * @param {object} context - Values available to the templates
+ * @param {object} [log] - Optional logger
+ * @returns {object} { name: renderedString }
+ */
+export function renderHeaderValues(headers, context, log) {
+  const rendered = {};
+  for (const [name, value] of Object.entries(headers || {})) {
+    rendered[name] = typeof value === "string"
+      ? stripLineBreaks(renderPromptTemplate(value, context, log, "HEADERS"))
+      : value;
+  }
+  return rendered;
+}
+
+/**
  * Runtime values every prompt can use, resolved per attempt so a fallback to a
  * different provider renders that provider's values.
  * @param {object} attempt - { provider, model, alias, format, connection }
@@ -127,6 +174,7 @@ export function buildPromptContext(vars, runtime) {
 export function buildRuntimeVars({ provider, model, alias, format, connection }) {
   const now = new Date();
   return {
+    ...buildRequestVars(),
     provider,
     alias,
     model,
