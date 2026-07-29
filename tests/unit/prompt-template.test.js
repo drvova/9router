@@ -73,6 +73,43 @@ describe("renderPromptTemplate", () => {
     expect(renderPromptTemplate(t, ctx({}))).toBe(t);
   });
 
+  it("renders when a referenced variable was never declared (the `in` trap)", () => {
+    // Regression: `'x' in undefined` is the one construct nunjucks hard-throws on, so an
+    // undeclared ResponseLanguage aborted the whole render and shipped raw Jinja upstream.
+    const t = "{% if '\u4e2d\u6587' in ResponseLanguage %}\u4e13\u5bb6{% else %}Experts{% endif %}";
+    expect(renderPromptTemplate(t, ctx({}))).toBe("Experts");
+  });
+
+  it("renders a full vendor prompt with nothing declared at all", () => {
+    const template = [
+      "Powered by {{ modelName }}",
+      "{%- if not productFeatures.DisableMultimodalGeneration %}",
+      "- Multimodal.",
+      "{%- endif %}",
+      "{% if '\u4e2d\u6587' in ResponseLanguage %}\u4e13\u5bb6{% else %}Experts{% endif %}",
+      "Folder: {{ dataFolderName }}",
+    ].join("\n");
+    const out = renderPromptTemplate(template, ctx({}));
+    expect(out).toContain("Powered by gpt-5.6-sol");
+    expect(out).toContain("- Multimodal.");
+    expect(out).toContain("Experts");
+    expect(out).not.toContain("{%");
+    expect(out).not.toContain("{{");
+  });
+
+  it("does not seed over nunjucks globals or filters", () => {
+    // Seeding `range` as "" would turn this into "Unable to call `range`".
+    expect(renderPromptTemplate("{% for i in range(3) %}{{ i }}{% endfor %}", ctx({}))).toBe("012");
+    expect(renderPromptTemplate("{{ name | upper }}", ctx({ name: "wb" }))).toBe("WB");
+  });
+
+  it("reuses the compiled template across calls without leaking state", () => {
+    const t = "{{ modelName }}|{{ extra }}";
+    expect(renderPromptTemplate(t, ctx({ extra: "one" }))).toBe("gpt-5.6-sol|one");
+    expect(renderPromptTemplate(t, ctx({}))).toBe("gpt-5.6-sol|");
+    expect(renderPromptTemplate(t, ctx({ extra: "two" }))).toBe("gpt-5.6-sol|two");
+  });
+
   it("leaves plain text untouched", () => {
     expect(renderPromptTemplate("Answer in British English.", ctx({})))
       .toBe("Answer in British English.");
