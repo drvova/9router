@@ -234,6 +234,13 @@ export class DefaultExecutor extends BaseExecutor {
       : this.refreshWithForm(grant.url(), params, proxyOptions);
   }
 
+  // DefaultExecutor can only refresh where the registry declares a grant. Compatible
+  // nodes never do, so a 401/403 on one would otherwise sleep three seconds to reach a
+  // null it could have returned at once.
+  canRefresh() {
+    return !!REFRESH_GRANTS[this.provider];
+  }
+
   async refreshCredentials(credentials, log, proxyOptions = null) {
     if (!credentials.refreshToken) return null;
 

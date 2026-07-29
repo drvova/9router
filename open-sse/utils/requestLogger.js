@@ -69,25 +69,23 @@ function writeJsonFile(sessionPath, filename, data) {
   }
 }
 
-// Mask sensitive data in headers (DISABLED - keep full token for testing)
+// Keep enough of a credential to recognise which one was used, never enough to use it.
+// This was disabled for testing and left that way, so enabling request logging wrote
+// bearer tokens to disk in full.
+const SENSITIVE_HEADER = /authorization|api-?key|cookie|token|secret|password|session/i;
+
 function maskSensitiveHeaders(headers) {
   if (!headers) return {};
-  return { ...headers };
-  
-  // Old masking code (disabled):
-  // const masked = { ...headers };
-  // const sensitiveKeys = ["authorization", "x-api-key", "cookie", "token"];
-  // 
-  // for (const key of Object.keys(masked)) {
-  //   const lowerKey = key.toLowerCase();
-  //   if (sensitiveKeys.some(sk => lowerKey.includes(sk))) {
-  //     const value = masked[key];
-  //     if (value && value.length > 20) {
-  //       masked[key] = value.slice(0, 10) + "..." + value.slice(-5);
-  //     }
-  //   }
-  // }
-  // return masked;
+  const masked = {};
+  for (const [key, value] of Object.entries(headers)) {
+    if (typeof value !== "string" || !SENSITIVE_HEADER.test(key)) {
+      masked[key] = value;
+      continue;
+    }
+    // Short values cannot be partially revealed without revealing them, so drop entirely.
+    masked[key] = value.length > 16 ? `${value.slice(0, 6)}…${value.slice(-4)}` : "[redacted]";
+  }
+  return masked;
 }
 
 // No-op logger when logging is disabled

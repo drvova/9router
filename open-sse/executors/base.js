@@ -88,6 +88,14 @@ export class BaseExecutor {
     return null;
   }
 
+  // Whether attempting a refresh could ever succeed. Default true so every executor
+  // keeps its retry behaviour; only executors that know refresh is impossible say no.
+  // Five executors return null from a catch, meaning a null can be a transient failure
+  // worth retrying — which is why this is a capability question and not a null check.
+  canRefresh() {
+    return true;
+  }
+
   needsRefresh(credentials) {
     return shouldRefreshCredentials(this.provider, credentials);
   }

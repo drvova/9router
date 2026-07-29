@@ -1094,6 +1094,10 @@ export class CursorExecutor extends BaseExecutor {
     });
   }
 
+  canRefresh() {
+    return false;
+  }
+
   async refreshCredentials() {
     return null;
   }

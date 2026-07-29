@@ -438,6 +438,10 @@ export class QoderExecutor extends BaseExecutor {
   // Qoder device tokens don't refresh through OAuth — the upstream returns
   // 403 for our flow. Surfacing failure via 401-on-chat is enough; the
   // dashboard tells users to re-login when their token expires (~30 days).
+  canRefresh() {
+    return false;
+  }
+
   async refreshCredentials() {
     return null;
   }
