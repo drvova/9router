@@ -431,29 +431,47 @@ export default function ProviderDetailPage() {
     if (!settingsRes.ok) throw new Error("Failed to read settings");
     const settingsData = await settingsRes.json();
 
-    const prompts = { ...(settingsData.providerSystemPrompt || {}) };
-    const varMaps = { ...(settingsData.providerSystemPromptVars || {}) };
-    const modes = { ...(settingsData.providerSystemPromptMode || {}) };
-    if (mode === "substitute") modes[providerId] = "substitute";
-    else delete modes[providerId];
     const trimmed = (value || "").trim();
-    if (trimmed) prompts[providerId] = trimmed;
-    else delete prompts[providerId];
-    if (Object.keys(vars).length) varMaps[providerId] = vars;
-    else delete varMaps[providerId];
-
-    const res = await fetch("/api/settings", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ providerSystemPrompt: prompts, providerSystemPromptVars: varMaps, providerSystemPromptMode: modes }),
-    });
-    if (!res.ok) throw new Error("Failed to save system prompt");
-
     const normalizedVars = formatKeyValueLines(vars);
+
+    // Send only the keys this operator actually edited. The form owns three settings
+    // keys, so writing all three from local state lets a page loaded before an
+    // external change revert fields nobody touched — that is how a working prompt
+    // mode and variable set silently reverted and started failing upstream again.
+    const patch = {};
+    if (trimmed !== savedSystemPrompt) {
+      const prompts = { ...(settingsData.providerSystemPrompt || {}) };
+      if (trimmed) prompts[providerId] = trimmed;
+      else delete prompts[providerId];
+      patch.providerSystemPrompt = prompts;
+    }
+    if (normalizedVars !== savedSystemPromptVars) {
+      const varMaps = { ...(settingsData.providerSystemPromptVars || {}) };
+      if (Object.keys(vars).length) varMaps[providerId] = vars;
+      else delete varMaps[providerId];
+      patch.providerSystemPromptVars = varMaps;
+    }
+    if (mode !== savedSystemPromptMode) {
+      const modes = { ...(settingsData.providerSystemPromptMode || {}) };
+      if (mode === "substitute") modes[providerId] = "substitute";
+      else delete modes[providerId];
+      patch.providerSystemPromptMode = modes;
+    }
+
+    if (Object.keys(patch).length > 0) {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      if (!res.ok) throw new Error("Failed to save system prompt");
+    }
+
     setSystemPrompt(trimmed);
     setSavedSystemPrompt(trimmed);
     setSystemPromptVars(normalizedVars);
     setSavedSystemPromptVars(normalizedVars);
+    setSystemPromptMode(mode);
     setSavedSystemPromptMode(mode);
   };
 
