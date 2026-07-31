@@ -49,7 +49,8 @@ export const NAV_SECTIONS = [
       { href: "/dashboard/cli-tools",    label: "CLI Tools",                          icon: "terminal",  description: "Configure CLI tools" },
       { href: "/dashboard/skills",       label: "Skills", title: "Agent Skills",      icon: "extension", description: "Copy a link and paste to your AI to use 9Router — no install needed" },
       { href: "/dashboard/proxy-pools",  label: "Proxy Pools",                        icon: "lan",       description: "Manage your proxy pool configurations" },
-      { action: "remote",                label: "Remote",                             icon: "computer" },
+      { action: "remote",                label: "9Remote",                            icon: "computer" },
+      { href: "https://9english.net/", external: true, label: "9English",           icon: "translate" },
     ],
   },
   {
@@ -73,7 +74,7 @@ const UNLISTED_PAGES = [
 
 const ALL_PAGES = [
   ...NAV_SECTIONS.flatMap((section) =>
-    section.items.flatMap((item) => (item.href ? [item, ...(item.children || [])] : []))
+    section.items.flatMap((item) => (item.href && !item.external ? [item, ...(item.children || [])] : []))
   ),
   NAV_FOOTER_ITEM,
   ...UNLISTED_PAGES,

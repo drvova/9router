@@ -99,85 +99,95 @@ import p96 from "./xiaomi-mimo.js";
 import p97 from "./xiaomi-tokenplan.js";
 import p98 from "./youcom.js";
 import p99 from "./alims-intl.js";
+// Hidden providers stay commented out in both the import list and the export array below.
+// trae/windsurf: no tool calling support (trae SOLO agent / windsurf gRPC skip ToolCallChunk).
+// devin-cli: spawns a local agent with shell/fs access.
 import p100 from "./agentrouter.js";
 import p101 from "./ai21.js";
 import p102 from "./aimlapi.js";
 import p103 from "./api-airforce.js";
 import p104 from "./bai.js";
 import p105 from "./baichuan.js";
-import p106 from "./baseten.js";
-import p107 from "./bazaarlink.js";
-import p108 from "./bluesminds.js";
-import p109 from "./bytez.js";
-import p110 from "./charm-hyper.js";
-import p111 from "./codestral.js";
-import p112 from "./crof.js";
-import p113 from "./databricks.js";
-import p114 from "./deepinfra.js";
-import p115 from "./dgrid.js";
-import p116 from "./digitalocean.js";
-import p117 from "./dit.js";
-import p118 from "./doubao.js";
-import p119 from "./freeaiapikey.js";
-import p120 from "./freemodel-dev.js";
-import p121 from "./friendliai.js";
-import p122 from "./galadriel.js";
-import p123 from "./gigachat.js";
-import p124 from "./github-models.js";
-import p125 from "./gitlawb.js";
-import p126 from "./gitlawb-gmi.js";
-import p127 from "./hackclub.js";
-import p128 from "./hcnsec.js";
-import p129 from "./heroku.js";
-import p130 from "./inference-net.js";
-import p131 from "./kenari.js";
-import p132 from "./kie.js";
-import p133 from "./kilo-gateway.js";
-import p134 from "./lambda-ai.js";
-import p135 from "./liquid.js";
-import p136 from "./llamagate.js";
-import p137 from "./llm7.js";
-import p138 from "./longcat.js";
-import p139 from "./maritalk.js";
-import p140 from "./meta-llama.js";
-import p141 from "./modal.js";
-import p142 from "./modelscope.js";
-import p143 from "./monsterapi.js";
-import p144 from "./moonshot.js";
-import p145 from "./morph.js";
-import p146 from "./nanogpt.js";
-import p147 from "./nous-research.js";
-import p148 from "./novita.js";
-import p149 from "./nscale.js";
-import p150 from "./nube.js";
-import p151 from "./openadapter.js";
-import p152 from "./openvecta.js";
-import p153 from "./orcarouter.js";
-import p154 from "./ovhcloud.js";
-import p155 from "./pioneer.js";
-import p156 from "./predibase.js";
-import p157 from "./publicai.js";
-import p158 from "./qianfan.js";
-import p159 from "./qiniu.js";
-import p160 from "./reka.js";
-import p161 from "./requesty.js";
-import p162 from "./sambanova.js";
-import p163 from "./scaleway.js";
-import p164 from "./sensenova.js";
-import p165 from "./snowflake.js";
-import p166 from "./stepfun.js";
-import p167 from "./sumopod.js";
-import p168 from "./synthetic.js";
-import p169 from "./tencent.js";
-import p170 from "./tokenrouter.js";
-import p171 from "./uncloseai.js";
-import p172 from "./upstage.js";
-import p173 from "./v0-vercel.js";
-import p174 from "./wafer.js";
-import p175 from "./wandb.js";
-import p176 from "./x5lab.js";
-import p177 from "./yi.js";
-import p178 from "./zenmux.js";
+import p106 from "./baidu.js";
+import p107 from "./baseten.js";
+import p108 from "./bazaarlink.js";
+import p109 from "./bluesminds.js";
+import p110 from "./bytez.js";
+import p111 from "./charm-hyper.js";
+import p112 from "./codebuddy-intl.js";
+import p113 from "./codestral.js";
+import p114 from "./crof.js";
+import p115 from "./databricks.js";
+import p116 from "./deepinfra.js";
+// import p117 from "./devin-cli.js";
+import p118 from "./dgrid.js";
+import p119 from "./digitalocean.js";
+import p120 from "./dit.js";
+import p121 from "./doubao.js";
+import p122 from "./freeaiapikey.js";
+import p123 from "./freemodel-dev.js";
+import p124 from "./friendliai.js";
+import p125 from "./galadriel.js";
+import p126 from "./gigachat.js";
+import p127 from "./github-models.js";
+import p128 from "./gitlawb.js";
+import p129 from "./gitlawb-gmi.js";
+import p130 from "./hackclub.js";
+import p131 from "./hcnsec.js";
+import p132 from "./heroku.js";
+import p133 from "./inference-net.js";
+import p134 from "./kenari.js";
+import p135 from "./kie.js";
+import p136 from "./kilo-gateway.js";
+import p137 from "./lambda-ai.js";
+import p138 from "./liquid.js";
+import p139 from "./llamagate.js";
+import p140 from "./llm7.js";
+import p141 from "./longcat.js";
+import p142 from "./maritalk.js";
+import p143 from "./meta-llama.js";
+import p144 from "./modal.js";
+import p145 from "./modelscope.js";
+import p146 from "./monsterapi.js";
+import p147 from "./moonshot.js";
+import p148 from "./morph.js";
+import p149 from "./nanogpt.js";
+import p150 from "./nous-research.js";
+import p151 from "./novita.js";
+import p152 from "./nscale.js";
+import p153 from "./nube.js";
+import p154 from "./openadapter.js";
+import p155 from "./openvecta.js";
+import p156 from "./orcarouter.js";
+import p157 from "./ovhcloud.js";
+import p158 from "./pioneer.js";
+import p159 from "./poolside.js";
+import p160 from "./predibase.js";
+import p161 from "./publicai.js";
+import p162 from "./qianfan.js";
+import p163 from "./qiniu.js";
+import p164 from "./reka.js";
+import p165 from "./requesty.js";
+import p166 from "./sambanova.js";
+import p167 from "./scaleway.js";
+import p168 from "./sensenova.js";
+import p169 from "./snowflake.js";
+import p170 from "./stepfun.js";
+import p171 from "./sumopod.js";
+import p172 from "./synthetic.js";
+import p173 from "./tencent.js";
+import p174 from "./tokenrouter.js";
+// import p175 from "./trae.js";
+import p176 from "./uncloseai.js";
+import p177 from "./upstage.js";
+import p178 from "./v0-vercel.js";
+import p179 from "./wafer.js";
+import p180 from "./wandb.js";
+// import p181 from "./windsurf.js";
+import p182 from "./x5lab.js";
+import p183 from "./yi.js";
+import p184 from "./zed.js";
+import p185 from "./zenmux.js";
 
 export default [
   p0,
@@ -297,7 +307,7 @@ export default [
   p114,
   p115,
   p116,
-  p117,
+  // p117, // devin-cli — hidden, spawns local agent with shell/fs access
   p118,
   p119,
   p120,
@@ -355,8 +365,15 @@ export default [
   p172,
   p173,
   p174,
-  p175,
+  // p175, // trae — hidden, no tool calling
   p176,
   p177,
   p178,
+  p179,
+  p180,
+  // p181, // windsurf — hidden, no tool calling
+  p182,
+  p183,
+  p184,
+  p185,
 ];

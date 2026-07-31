@@ -163,6 +163,21 @@ export default function Sidebar({ onClose }) {
         </button>
       );
     }
+    if (item.external) {
+      return (
+        <a
+          key={item.href}
+          href={item.href}
+          target="_blank"
+          rel="noreferrer"
+          onClick={onClose}
+          className={rowClass(false, 0)}
+        >
+          <span aria-hidden="true" className={iconClass(false, 0)}>{item.icon}</span>
+          <span className="text-sm font-medium">{item.label}</span>
+        </a>
+      );
+    }
     if (item.children) {
       return <NavGroupRow key={item.href} item={item} pathname={pathname} onClose={onClose} />;
     }

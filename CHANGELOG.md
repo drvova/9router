@@ -5,6 +5,38 @@
 - **Providers**: Anthropic Messages dual transports for 43 providers whose native `/v1/messages` endpoints were verified live (full-registry sweep: 330+ derived candidate URLs probed across 3 rounds, control-404 differentiated, auth header per upstream error evidence) — Moonshot, LongCat, Novita, Synthetic, ModelScope, NanoGPT, StepFun, AIMLAPI, Requesty, SiliconFlow, iFlow, xAI, Mistral, Blackbox, Featherless, Vercel AI Gateway, GLM-CN (bigmodel.cn `/api/anthropic`), OpenCode Go, Tencent Hunyuan, Baidu Qianfan, Heroku, DigitalOcean, Upstage, SenseNova, Qiniu, FriendliAI, Pioneer, Kilo Gateway, LLM7, Kie, OrcaRouter, Alibaba Coding CN+intl (DashScope `claude-code-proxy`), and the new-api gateway family (b.ai, BluesMinds, HCNSec, TokenRouter) … — Claude-format clients now skip the lossy OpenAI translation hop (50 dual-transport providers total)
 - **CLI**: every registry provider is now addable from the terminal menu via a new `➕ Add other provider (search …)` entry backed by a `/api/providers/catalog` endpoint (single source of truth = registry). The curated quick-pick stays short; the full 150+ apikey catalog is searchable. Previously the terminal wizard only offered a hardcoded 7-provider shortlist.
 
+# v0.5.45 (2026-07-30)
+
+## Features
+- **Providers**: add Poolside (OpenAI-compatible)
+- **Providers**: add api-airforce, baidu, bazaarlink, bluesminds, kilo-gateway, llm7, morph, sambanova, tencent
+- **OAuth**: zed / trae / windsurf providers + harden callback proxies
+- **CLI tools**: set Claude Code max context tokens
+- **Qoder**: PAT auth + refresh model list
+- **Gemini**: Gemini 3.6 Flash tier routing + Gemini 3.5 Flash Lite
+- **Claude**: bump default Opus to `claude-opus-5`
+- **Kiro**: add Claude Opus 5 models
+- **Usage**: Kimi and DeepSeek usage handlers
+- **Usage**: SuperGrok weekly pool via gRPC-web
+
+## Fixes
+- **Refresh**: rotate `refresh_token` between retry attempts
+- **Kiro**: canonicalize tool history and route API keys correctly
+- **Kiro**: normalize dashboard thinking intensity models
+- **Cursor**: stop leaking agent tool errors as text
+- **Gemini**: fill empty tool schemas after `$ref` strip
+- **Antigravity**: strip `stream_options` from non-stream requests
+- **Jina-reader**: recover after transient errors, use JSON POST API
+- **Usage**: record exact embedding tokens
+- **Tunnel**: preserve successor cloudflared PID
+- **Console-log**: initialize capture at server boot + prevent SSE proxy buffering
+- **Dashboard**: count dual-auth, free-tier OAuth and API-key connections correctly
+- **Dashboard**: flex quota rows, thin global scrollbars, no hidden-row overflow
+
+## Docs
+- **i18n**: expand pt-BR translation to 986 terms
+- README: Indonesian translation
+
 # v0.5.40 (2026-07-20)
 
 ## Features

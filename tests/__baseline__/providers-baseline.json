@@ -73,7 +73,7 @@
   },
   "antigravity": {
     "baseUrls": [
-      "https://cloudcode-pa.googleapis.com"
+      "https://daily-cloudcode-pa.googleapis.com"
     ],
     "format": "antigravity",
     "headers": {
@@ -696,7 +696,6 @@
     "headers": {
       "Content-Type": "application/json",
       "Accept": "application/vnd.amazon.eventstream",
-      "X-Amz-Target": "AmazonCodeWhispererStreamingService.GenerateAssistantResponse",
       "User-Agent": "AWS-SDK-JS/3.0.0 kiro-ide/1.0.0",
       "X-Amz-User-Agent": "aws-sdk-js/3.0.0 kiro-ide/1.0.0"
     },
@@ -1260,6 +1259,11 @@
     "baseUrl": "https://api.baichuan-ai.com/v1/chat/completions",
     "format": "openai"
   },
+  "baidu": {
+    "baseUrl": "https://qianfan.baidubce.com/v2/chat/completions",
+    "validateUrl": "https://qianfan.baidubce.com/v2/models",
+    "format": "openai"
+  },
   "baseten": {
     "baseUrl": "https://inference.baseten.co/v1/chat/completions",
     "format": "openai"
@@ -1354,6 +1358,26 @@
         }
       }
     ]
+  },
+  "codebuddy-intl": {
+    "baseUrl": "https://www.codebuddy.ai/v2/chat/completions",
+    "forceStream": true,
+    "thinkingFormat": "openai",
+    "headers": {
+      "User-Agent": "IDE/2.108.1 CodeBuddy/2.108.1",
+      "X-Product": "SaaS",
+      "X-IDE-Type": "IDE",
+      "X-IDE-Name": "IDE",
+      "x-requested-with": "XMLHttpRequest",
+      "x-codebuddy-request": "1"
+    },
+    "auth": {
+      "combined": true,
+      "header": "Authorization",
+      "scheme": "bearer"
+    },
+    "format": "openai",
+    "tokenUrl": "https://www.codebuddy.ai/v2/plugin/auth/token"
   },
   "codestral": {
     "baseUrl": "https://codestral.mistral.ai/v1/chat/completions",
@@ -1958,6 +1982,11 @@
       }
     ]
   },
+  "poolside": {
+    "baseUrl": "https://inference.poolside.ai/v1/chat/completions",
+    "validateUrl": "https://inference.poolside.ai/v1/models",
+    "format": "openai"
+  },
   "predibase": {
     "baseUrl": "https://serving.app.predibase.com/v1/chat/completions",
     "format": "openai"
@@ -2296,6 +2325,23 @@
   "yi": {
     "baseUrl": "https://api.lingyiwanwu.com/v1/chat/completions",
     "format": "openai"
+  },
+  "zed": {
+    "baseUrl": "https://cloud.zed.dev/completions",
+    "format": "openai",
+    "forceStream": true,
+    "headers": {
+      "content-type": "application/json"
+    },
+    "auth": {
+      "combined": true,
+      "header": "Authorization",
+      "scheme": "<user_id> <access_token>"
+    },
+    "usage": {
+      "url": "https://cloud.zed.dev/client/users/me"
+    },
+    "modelsUrl": "https://cloud.zed.dev/models"
   },
   "zenmux": {
     "baseUrl": "https://zenmux.ai/api/v1/chat/completions",
