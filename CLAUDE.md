@@ -27,6 +27,7 @@ npm run build && PORT=20128 HOSTNAME=0.0.0.0 npm run start           # productio
 - **Don't merge, rebase, or checkout across branches while `next dev` is up.** Turbopack's persistent cache (`.next/dev/cache/turbopack`) can capture whatever is on disk mid-operation — including conflict markers — and then replay that stale compile failure for hours after the files are clean, pointing at line numbers that no longer exist. Symptom: `Merge conflict marker encountered.` on a file where `grep -c '^<<<<<<<'` returns 0 and `git status` is clean. Fix: stop the dev server, `rm -rf .next/dev/cache/turbopack`, restart. Note the dev log's `"timestamp"` field is **elapsed since server start**, not wall clock — read it as an offset from the server's start time or you will chase a phantom.
 - Default runtime port is **20128** (dashboard at `/dashboard`, API at `/v1`).
 - Lint: `npx eslint .` (config `eslint.config.mjs`, extends `eslint-config-next`).
+- Preflight: **`npm run check`** (`scripts/check.mjs`) — read-only, fails when a derived artifact has drifted from its source of truth: the provider icon map and the providers / alias / oauth-url baselines. Run it after touching anything under `open-sse/providers/registry/` or `public/providers/`. Each failure prints the exact regeneration command. It is verified side-effect-free and exits 2 if a check ever dirties the tree.
 
 CLI package (`cli/`):
 ```bash
@@ -73,7 +74,8 @@ Two authoritative docs already exist — read them before working in these areas
 - Never hardcode role/block/model strings — use `open-sse/translator/schema/` and `open-sse/config/` constants. Config-driven and DRY is enforced by convention here.
 
 ### Provider registry (`open-sse/providers/registry/*`)
-- One file per provider. `providers/registry/index.js` is an **auto-generated** static import list — regenerate it with `scripts/migrate-registry.mjs` / `injectDisplayToRegistry.mjs`, don't hand-edit.
+- One file per provider. `providers/registry/index.js` is **hand-maintained despite its "Auto-generated" header** — no generator for it exists in this repo. It carries deliberate exclusions a generator would erase (`trae`, `windsurf`, `devin-cli` are commented out of both the import list and the export array). Edit it by hand when adding a provider, and keep the two lists in sync. Do **not** run `scripts/migrate-registry.mjs` expecting it to regenerate the index: it is a one-shot schema migrator that still believes it lives in `registry/`, so today it would scan `scripts/` and crash.
+- Entries are keyed on load, so **array order is not cosmetic**: `PROVIDERS` keys on `entry.id`, but `PROVIDER_MODELS` keys on `entry.alias || entry.id` and the alias map keys on `alias` + `aliases[]`. Two entries sharing any of those keys means the later one silently wins and the earlier one's models become unreachable. `baidu` (alias `qianfan`) and `qianfan` currently collide this way.
 - Add a provider: copy `providers/REGISTRY_TEMPLATE.js`, add models to `config/providerModels.js`. Only add an executor for non-OpenAI-compatible upstreams.
 
 ### Persistence — IMPORTANT (ARCHITECTURE.md is stale here)

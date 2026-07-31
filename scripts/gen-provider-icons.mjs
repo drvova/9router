@@ -1,6 +1,6 @@
 // Regenerate src/shared/utils/providerIconFiles.js from public/providers/*.{png,svg,webp}.
 // Run after adding/removing provider icon assets:  node scripts/gen-provider-icons.mjs
-import { readdirSync, writeFileSync } from "node:fs";
+import { readdirSync, writeFileSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -28,5 +28,27 @@ const body =
   entries.map(([base, file]) => `  [${JSON.stringify(base)}, ${JSON.stringify(file)}],`).join("\n") +
   `\n]);\n`;
 
-writeFileSync(join(root, "src/shared/utils/providerIconFiles.js"), body);
+const outPath = join(root, "src/shared/utils/providerIconFiles.js");
+
+// --check compares instead of writing, so a preflight can detect drift without
+// touching the working tree. The derivation above stays the single source of truth.
+if (process.argv.includes("--check")) {
+  const current = readFileSync(outPath, "utf8");
+  if (current === body) {
+    console.log(`providerIconFiles.js in sync (${entries.length} entries).`);
+    process.exit(0);
+  }
+  const bases = (src) => new Set([...src.matchAll(/^  \["([^"]+)",/gm)].map((m) => m[1]));
+  const have = bases(current);
+  const want = bases(body);
+  const missing = [...want].filter((b) => !have.has(b));
+  const stale = [...have].filter((b) => !want.has(b));
+  console.error(`providerIconFiles.js is STALE (${have.size} committed vs ${want.size} derived).`);
+  if (missing.length) console.error(`  icons on disk but absent from the map (unreachable in the UI): ${missing.join(", ")}`);
+  if (stale.length) console.error(`  entries with no file on disk (guaranteed 404): ${stale.join(", ")}`);
+  console.error(`  fix: node scripts/gen-provider-icons.mjs`);
+  process.exit(1);
+}
+
+writeFileSync(outPath, body);
 console.log(`Wrote ${entries.length} icon entries → src/shared/utils/providerIconFiles.js`);
