@@ -29,6 +29,12 @@ const clean = (s) =>
 
 const CHECKS = [
   {
+    name: "registry index integrity",
+    artifact: "open-sse/providers/registry/index.js",
+    argv: ["scripts/check-registry-index.mjs"],
+    fix: "hand-edit open-sse/providers/registry/index.js — it has no generator",
+  },
+  {
     name: "provider icon map",
     artifact: "src/shared/utils/providerIconFiles.js",
     argv: ["scripts/gen-provider-icons.mjs", "--check"],
