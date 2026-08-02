@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
@@ -27,7 +28,7 @@ for (const [goos, goarch, name] of targets) {
 
 const checksums = targets.map(([, , name]) => {
   const file = path.join(output, name);
-  const digest = execFileSync("sha256sum", [file], { encoding: "utf8" }).trim().split(/\s+/)[0];
+  const digest = crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
   return `${digest}  ${name}`;
 }).join("\n") + "\n";
 fs.writeFileSync(path.join(output, "SHA256SUMS"), checksums);
