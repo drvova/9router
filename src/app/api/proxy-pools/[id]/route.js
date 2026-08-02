@@ -53,6 +53,7 @@ function normalizeProxyPoolUpdate(body = {}) {
   if (Object.prototype.hasOwnProperty.call(body, "type")) {
     const validTypes = ["http", "vercel", "cloudflare", "deno", "warp"];
     updates.type = validTypes.includes(body?.type) ? body.type : "http";
+    if (updates.type === "warp") updates.strictProxy = true;
   }
 
   return { updates };
@@ -91,6 +92,10 @@ export async function PUT(request, { params }) {
 
     const body = await request.json();
     const normalized = normalizeProxyPoolUpdate(body);
+
+    if (!normalized.error && normalized.updates.type === "warp" && !normalized.updates.encryptedProfile && !existing.encryptedProfile) {
+      normalized.error = "WARP profile JSON is required";
+    }
 
     if (normalized.error) {
       return NextResponse.json({ error: normalized.error }, { status: 400 });
