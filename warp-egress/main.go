@@ -233,6 +233,7 @@ func proxyHandler(proxy *warp.L4Proxy, authToken string) http.Handler {
 		defer cancel()
 		upstream, err := proxy.DialContext(ctx, r.Host)
 		if err != nil {
+			log.Printf("[WARP] dial %s failed: %v", r.Host, err)
 			http.Error(w, "WARP connection failed", http.StatusBadGateway)
 			return
 		}
