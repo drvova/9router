@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
+import { encryptWarpProfile } from "@/lib/warp/profileCrypto.js";
 import {
   deleteProxyPool,
   getProviderConnections,
   getProxyPoolById,
   updateProxyPool,
 } from "@/models";
+
+function publicPool(pool) {
+  if (!pool) return pool;
+  const { encryptedProfile, ...safe } = pool;
+  return safe;
+}
 
 function normalizeProxyPoolUpdate(body = {}) {
   const updates = {};
@@ -15,6 +22,12 @@ function normalizeProxyPoolUpdate(body = {}) {
       return { error: "Name is required" };
     }
     updates.name = name;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "warpProfile")) {
+    const warpProfile = body?.warpProfile && typeof body.warpProfile === "object" && !Array.isArray(body.warpProfile) ? body.warpProfile : null;
+    if (!warpProfile) return { error: "WARP profile JSON is required" };
+    updates.encryptedProfile = encryptWarpProfile(warpProfile);
   }
 
   if (Object.prototype.hasOwnProperty.call(body, "proxyUrl")) {
@@ -38,7 +51,7 @@ function normalizeProxyPoolUpdate(body = {}) {
   }
 
   if (Object.prototype.hasOwnProperty.call(body, "type")) {
-    const validTypes = ["http", "vercel", "cloudflare"];
+    const validTypes = ["http", "vercel", "cloudflare", "deno", "warp"];
     updates.type = validTypes.includes(body?.type) ? body.type : "http";
   }
 
@@ -59,7 +72,7 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: "Proxy pool not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ proxyPool });
+    return NextResponse.json({ proxyPool: publicPool(proxyPool) });
   } catch (error) {
     console.log("Error fetching proxy pool:", error);
     return NextResponse.json({ error: "Failed to fetch proxy pool" }, { status: 500 });
@@ -84,7 +97,7 @@ export async function PUT(request, { params }) {
     }
 
     const updated = await updateProxyPool(id, normalized.updates);
-    return NextResponse.json({ proxyPool: updated });
+    return NextResponse.json({ proxyPool: publicPool(updated) });
   } catch (error) {
     console.log("Error updating proxy pool:", error);
     return NextResponse.json({ error: "Failed to update proxy pool" }, { status: 500 });

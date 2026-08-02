@@ -21,6 +21,8 @@ function normalizeFormData(data = {}) {
   return {
     name: data.name || "",
     proxyUrl: data.proxyUrl || "",
+    type: data.type || "http",
+    warpProfile: data.type === "warp" ? "" : "",
     noProxy: data.noProxy || "",
     isActive: data.isActive !== false,
     strictProxy: data.strictProxy === true,
@@ -111,10 +113,21 @@ export default function ProxyPoolsPage() {
       proxyUrl: formData.proxyUrl.trim(),
       noProxy: formData.noProxy.trim(),
       isActive: formData.isActive === true,
-      strictProxy: formData.strictProxy === true,
+      strictProxy: formData.type === "warp" ? true : formData.strictProxy === true,
+      type: formData.type,
+      warpProfile: null,
     };
 
-    if (!payload.name || !payload.proxyUrl) return;
+    if (!payload.name || (payload.type === "warp" ? !formData.warpProfile.trim() : !payload.proxyUrl)) return;
+
+    if (payload.type === "warp") {
+      try {
+        payload.warpProfile = JSON.parse(formData.warpProfile);
+      } catch {
+        notify.error("WARP profile must be valid JSON");
+        return;
+      }
+    }
 
     setSaving(true);
     try {
@@ -722,6 +735,9 @@ export default function ProxyPoolsPage() {
                     {pool.type === "cloudflare" && (
                       <Badge variant="default" size="sm">cloudflare relay</Badge>
                     )}
+                    {pool.type === "warp" && (
+                      <Badge variant="default" size="sm">cloudflare WARP</Badge>
+                    )}
                     <Badge variant="default" size="sm">
                       {pool.boundConnectionCount || 0} bound
                     </Badge>
@@ -996,12 +1012,29 @@ export default function ProxyPoolsPage() {
             onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
             placeholder="Office Proxy"
           />
-          <Input
-            label="Proxy URL"
-            value={formData.proxyUrl}
-            onChange={(e) => setFormData((prev) => ({ ...prev, proxyUrl: e.target.value }))}
-            placeholder="http://127.0.0.1:7897"
-          />
+          <label className="text-sm font-medium text-text-main">Proxy type
+            <select className="mt-1 w-full rounded-md border border-black/10 bg-transparent px-3 py-2" value={formData.type} onChange={(e) => setFormData((prev) => ({ ...prev, type: e.target.value }))}>
+              <option value="http">HTTP / SOCKS proxy</option>
+              <option value="warp">Cloudflare WARP (native MASQUE)</option>
+            </select>
+          </label>
+          {formData.type === "warp" ? (
+            <Input
+              label="Encrypted WARP profile"
+              value={formData.warpProfile}
+              onChange={(e) => setFormData((prev) => ({ ...prev, warpProfile: e.target.value }))}
+              placeholder='{"private_key":"...","endpoint_v4":"...","endpoint_pub_key":"-----BEGIN PUBLIC KEY-----..."}'
+              hint="Paste the WARP profile JSON. It is encrypted server-side and never displayed after saving."
+              type="password"
+            />
+          ) : (
+            <Input
+              label="Proxy URL"
+              value={formData.proxyUrl}
+              onChange={(e) => setFormData((prev) => ({ ...prev, proxyUrl: e.target.value }))}
+              placeholder="http://127.0.0.1:7897"
+            />
+          )}
           <Input
             label="No Proxy"
             value={formData.noProxy}
@@ -1038,7 +1071,7 @@ export default function ProxyPoolsPage() {
             <Button
               fullWidth
               onClick={handleSave}
-              disabled={!formData.name.trim() || !formData.proxyUrl.trim() || saving}
+              disabled={!formData.name.trim() || (formData.type === "warp" ? !formData.warpProfile.trim() : !formData.proxyUrl.trim()) || saving}
             >
               {saving ? "Saving..." : "Save"}
             </Button>

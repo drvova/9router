@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getProxyPoolById, updateProxyPool } from "@/models";
 import { testProxyUrl } from "@/lib/network/proxyTest";
+import { startWarpEgress } from "@/lib/warp/manager.js";
 import { fetch as undiciFetch } from "undici";
 
 async function testVercelRelay(relayUrl, timeoutMs = 10000) {
@@ -45,7 +46,9 @@ export async function POST(request, { params }) {
 
     const result = proxyPool.type === "vercel" || proxyPool.type === "cloudflare" || proxyPool.type === "deno"
       ? await testVercelRelay(proxyPool.proxyUrl)
-      : await testProxyUrl({ proxyUrl: proxyPool.proxyUrl });
+      : await testProxyUrl({ proxyUrl: proxyPool.type === "warp"
+        ? await startWarpEgress(proxyPool.id, proxyPool.encryptedProfile)
+        : proxyPool.proxyUrl });
     const now = new Date().toISOString();
 
     await updateProxyPool(id, {

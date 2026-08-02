@@ -1,4 +1,5 @@
 import { getProxyPoolById } from "@/models";
+import { startWarpEgress } from "@/lib/warp/manager.js";
 
 // Safely normalize any value into a trimmed string.
 function normalizeString(value) {
@@ -91,9 +92,23 @@ export async function resolveConnectionProxyConfig(
       const isValidPool =
         proxyPool &&
         proxyPool.isActive === true &&
-        proxyUrl;
+        (proxyPool.type === "warp" ? proxyPool.encryptedProfile : proxyUrl);
 
       if (isValidPool) {
+        if (proxyPool.type === "warp") {
+          if (!proxyPool.encryptedProfile) throw new Error("WARP proxy pool has no encrypted profile");
+          const runtimeProxyUrl = await startWarpEgress(proxyPoolId, proxyPool.encryptedProfile);
+          return {
+            source: "warp",
+            proxyPoolId,
+            proxyPool,
+            connectionProxyEnabled: true,
+            connectionProxyUrl: runtimeProxyUrl,
+            connectionNoProxy: noProxy,
+            strictProxy: true,
+          };
+        }
+
         /**
          * Vercel/Cloudflare relay proxies use base URL rewriting
          * instead of HTTP_PROXY environment variables.
