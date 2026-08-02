@@ -1,11 +1,36 @@
 import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
+import { DATA_DIR } from "@/lib/dataDir.js";
 
 const PREFIX = "v1:";
 
+function loadSecret() {
+  const configured = process.env.JWT_SECRET || process.env.API_KEY_SECRET;
+  if (configured) return configured;
+
+  const sharedSecretPath = path.join(DATA_DIR, "jwt-secret");
+  try {
+    const shared = fs.readFileSync(sharedSecretPath, "utf8").trim();
+    if (shared) return shared;
+  } catch {}
+
+  fs.mkdirSync(DATA_DIR, { recursive: true, mode: 0o700 });
+  const generated = crypto.randomBytes(32).toString("hex");
+  const secretPath = path.join(DATA_DIR, "warp-secret");
+  try {
+    fs.writeFileSync(secretPath, generated, { flag: "wx", mode: 0o600 });
+    return generated;
+  } catch (error) {
+    if (error.code !== "EEXIST") throw error;
+    const existing = fs.readFileSync(secretPath, "utf8").trim();
+    if (!existing) throw new Error("WARP encryption secret file is empty");
+    return existing;
+  }
+}
+
 function key() {
-  const secret = process.env.JWT_SECRET || process.env.API_KEY_SECRET;
-  if (!secret) throw new Error("JWT_SECRET or API_KEY_SECRET is required for WARP profile encryption");
-  return crypto.createHash("sha256").update(secret).digest();
+  return crypto.createHash("sha256").update(loadSecret()).digest();
 }
 
 export function encryptWarpProfile(profile) {
