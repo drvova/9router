@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { Badge, Button, Card, CardSkeleton, Input, Modal, Toggle, ConfirmModal } from "@/shared/components";
 import { useNotificationStore } from "@/store/notificationStore";
+import ProviderIcon from "@/shared/components/ProviderIcon";
 
 function getStatusVariant(status) {
   if (status === "active") return "success";
@@ -639,7 +640,7 @@ export default function ProxyPoolsPage() {
                   }}
                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-main transition-colors hover:bg-black/5 dark:hover:bg-white/5"
                 >
-                  <span className="material-symbols-outlined text-[20px] text-orange-500">vpn_key</span>
+                  <ProviderIcon providerId="cloudflare-ai" alt="Cloudflare" size={20} className="rounded" />
                   Login with WARP
                 </button>
                 <button
