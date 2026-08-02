@@ -1,10 +1,24 @@
 package main
 
 import (
+	"encoding/base64"
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
 )
+
+func TestProxyBasicAuthReadsProxyAuthorization(t *testing.T) {
+	request, err := http.NewRequest(http.MethodConnect, "https://google.com:443", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set("Proxy-Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte("9router:secret")))
+	user, pass, ok := proxyBasicAuth(request)
+	if !ok || user != "9router" || pass != "secret" {
+		t.Fatalf("proxyBasicAuth() = %q, %q, %t", user, pass, ok)
+	}
+}
 
 func TestLoadProfileRequiresTunnelFields(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "config.json")

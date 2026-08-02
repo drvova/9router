@@ -191,6 +191,25 @@ func newProxy(p profile) (*warp.L4Proxy, error) {
 		ConnectRetryCount: 2,
 	})
 }
+func proxyBasicAuth(r *http.Request) (string, string, bool) {
+	value := strings.TrimSpace(r.Header.Get("Proxy-Authorization"))
+	if value == "" {
+		return "", "", false
+	}
+	const prefix = "Basic "
+	if !strings.HasPrefix(value, prefix) {
+		return "", "", false
+	}
+	decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(strings.TrimPrefix(value, prefix)))
+	if err != nil {
+		return "", "", false
+	}
+	credentials := strings.SplitN(string(decoded), ":", 2)
+	if len(credentials) != 2 {
+		return "", "", false
+	}
+	return credentials[0], credentials[1], true
+}
 
 func proxyHandler(proxy *warp.L4Proxy, authToken string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -199,7 +218,7 @@ func proxyHandler(proxy *warp.L4Proxy, authToken string) http.Handler {
 			return
 		}
 		if authToken != "" {
-			user, pass, ok := r.BasicAuth()
+			user, pass, ok := proxyBasicAuth(r)
 			if !ok || user != "9router" || pass != authToken {
 				w.Header().Set("Proxy-Authenticate", `Basic realm="9router-warp"`)
 				http.Error(w, "proxy authentication required", http.StatusProxyAuthRequired)
