@@ -1,17 +1,26 @@
 import path from "node:path";
 import net from "node:net";
+import crypto from "node:crypto";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { DATA_DIR } from "@/lib/dataDir.js";
 import { decryptWarpProfile } from "./profileCrypto.js";
 
 const runtimes = new Map();
+const starting = new Map();
 const READY_TIMEOUT_MS = 15000;
 
 function helperPath() {
   if (process.env.NINE_ROUTER_WARP_EGRESS) return process.env.NINE_ROUTER_WARP_EGRESS;
   const name = process.platform === "win32" ? "warp-egress.exe" : "warp-egress";
   return path.join(process.cwd(), "warp-egress", name);
+}
+
+function proxyUrl(port, token) {
+  const url = new URL(`http://127.0.0.1:${port}`);
+  url.username = "9router";
+  url.password = token;
+  return url.href;
 }
 
 function waitReady(child, port) {
@@ -35,12 +44,24 @@ function nextPort() {
 
 export async function startWarpEgress(profileId, encryptedProfile) {
   if (runtimes.has(profileId)) return runtimes.get(profileId).proxyUrl;
+  if (starting.has(profileId)) return starting.get(profileId);
+  const promise = startWarpEgressInternal(profileId, encryptedProfile);
+  starting.set(profileId, promise);
+  try {
+    return await promise;
+  } finally {
+    starting.delete(profileId);
+  }
+}
+
+async function startWarpEgressInternal(profileId, encryptedProfile) {
   const profilePath = path.join(DATA_DIR, "warp", `${profileId}.json`);
   const fs = await import("node:fs/promises");
   await fs.mkdir(path.dirname(profilePath), { recursive: true, mode: 0o700 });
   await fs.writeFile(profilePath, JSON.stringify(decryptWarpProfile(encryptedProfile)), { mode: 0o600 });
   const port = nextPort();
-  const child = spawn(helperPath(), ["--config", profilePath, "--bind", "127.0.0.1", "--port", String(port)], { stdio: ["ignore", "pipe", "pipe"], env: process.env });
+  const token = crypto.randomUUID().replaceAll("-", "");
+  const child = spawn(helperPath(), ["--config", profilePath, "--bind", "127.0.0.1", "--port", String(port), "--token", token], { stdio: ["ignore", "pipe", "pipe"], env: process.env });
   child.stderr?.on("data", (data) => console.error(`[WARP] ${data.toString().trim()}`));
   try {
     await waitReady(child, port);
@@ -50,7 +71,7 @@ export async function startWarpEgress(profileId, encryptedProfile) {
     throw error;
   }
   await fs.unlink(profilePath).catch(() => {});
-  const runtime = { child, port, proxyUrl: `http://127.0.0.1:${port}` };
+  const runtime = { child, port, proxyUrl: proxyUrl(port, token) };
   runtimes.set(profileId, runtime);
   child.once("exit", () => { if (runtimes.get(profileId) === runtime) runtimes.delete(profileId); });
   return runtime.proxyUrl;

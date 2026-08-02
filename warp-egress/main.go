@@ -141,11 +141,19 @@ func newProxy(p profile) (*warp.L4Proxy, error) {
 	})
 }
 
-func proxyHandler(proxy *warp.L4Proxy) http.Handler {
+func proxyHandler(proxy *warp.L4Proxy, authToken string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodConnect {
 			http.Error(w, "CONNECT required", http.StatusMethodNotAllowed)
 			return
+		}
+		if authToken != "" {
+			user, pass, ok := r.BasicAuth()
+			if !ok || user != "9router" || pass != authToken {
+				w.Header().Set("Proxy-Authenticate", `Basic realm="9router-warp"`)
+				http.Error(w, "proxy authentication required", http.StatusProxyAuthRequired)
+				return
+			}
 		}
 		if strings.TrimSpace(r.Host) == "" {
 			http.Error(w, "target required", http.StatusBadRequest)
@@ -187,6 +195,7 @@ func main() {
 	configPath := flag.String("config", "config.json", "WARP profile JSON path")
 	bind := flag.String("bind", "127.0.0.1", "local proxy bind address")
 	port := flag.Int("port", defaultPort, "local HTTP CONNECT proxy port")
+	authToken := flag.String("token", "", "required local proxy token")
 	flag.Parse()
 	if *bind != "127.0.0.1" && *bind != "::1" {
 		log.Fatal("bind must be loopback-only")
@@ -199,7 +208,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	server := &http.Server{Addr: net.JoinHostPort(*bind, fmt.Sprint(*port)), Handler: proxyHandler(proxy), ReadHeaderTimeout: 10 * time.Second}
+	server := &http.Server{Addr: net.JoinHostPort(*bind, fmt.Sprint(*port)), Handler: proxyHandler(proxy, *authToken), ReadHeaderTimeout: 10 * time.Second}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	go func() { <-ctx.Done(); _ = server.Shutdown(context.Background()) }()
