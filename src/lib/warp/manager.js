@@ -1,4 +1,5 @@
 import path from "node:path";
+import fs from "node:fs";
 import net from "node:net";
 import crypto from "node:crypto";
 import { spawn } from "node:child_process";
@@ -11,9 +12,17 @@ const starting = new Map();
 const READY_TIMEOUT_MS = 15000;
 
 function helperPath() {
-  if (process.env.NINE_ROUTER_WARP_EGRESS) return process.env.NINE_ROUTER_WARP_EGRESS;
   const name = process.platform === "win32" ? "warp-egress.exe" : "warp-egress";
-  return path.join(process.cwd(), "warp-egress", name);
+  const target = `${process.platform}-${process.arch}`;
+  const candidates = [
+    process.env.NINE_ROUTER_WARP_EGRESS,
+    path.join(process.cwd(), "warp-egress", name),
+    path.join(process.cwd(), "dist", "warp-egress", `warp-egress-${target}${process.platform === "win32" ? ".exe" : ""}`),
+    path.join(process.cwd(), "cli", "app", "warp-egress", name),
+  ].filter(Boolean);
+  const found = candidates.find((candidate) => fs.existsSync(candidate));
+  if (found) return found;
+  throw new Error(`WARP helper is not installed. Build it with \"npm run build:warp\" or set NINE_ROUTER_WARP_EGRESS (tried: ${candidates.join(", ")})`);
 }
 
 function proxyUrl(port, token) {
