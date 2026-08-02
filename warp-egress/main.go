@@ -46,9 +46,6 @@ type registrationInput struct {
 }
 
 func registerProfile(input registrationInput) (profile, error) {
-	if strings.TrimSpace(input.JWT) == "" {
-		return profile{}, errors.New("Cloudflare Zero Trust team token is required")
-	}
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return profile{}, fmt.Errorf("generate MASQUE key: %w", err)
@@ -246,7 +243,7 @@ func proxyHandler(proxy *warp.L4Proxy, authToken string) http.Handler {
 }
 
 func main() {
-	register := flag.Bool("register-stdin", false, "register a WARP MASQUE profile from JSON on stdin")
+	register := flag.Bool("register-stdin", false, "register a consumer WARP MASQUE profile from JSON on stdin")
 	configPath := flag.String("config", "config.json", "WARP profile JSON path")
 	bind := flag.String("bind", "127.0.0.1", "local proxy bind address")
 	port := flag.Int("port", defaultPort, "local HTTP CONNECT proxy port")

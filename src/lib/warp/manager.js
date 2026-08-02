@@ -42,8 +42,8 @@ function nextPort() {
   return 17080 + runtimes.size;
 }
 
-export async function registerWarpProfile(input) {
-  if (!input?.jwt || typeof input.jwt !== "string") throw new Error("Cloudflare Zero Trust team token is required");
+export async function registerWarpProfile(input = {}) {
+  if (input.jwt !== undefined && typeof input.jwt !== "string") throw new Error("Invalid Cloudflare enrollment token");
   const child = spawn(helperPath(), ["--register-stdin"], { stdio: ["pipe", "pipe", "pipe"], env: process.env });
   child.stdin.end(JSON.stringify({ jwt: input.jwt, device_name: input.deviceName || "9Router", accept_tos: input.acceptTos === true }));
   const [stdout, stderr] = await Promise.all([

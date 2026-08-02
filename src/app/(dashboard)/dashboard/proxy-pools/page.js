@@ -455,6 +455,22 @@ export default function ProxyPoolsPage() {
     }
   };
 
+  const handleFreeWarp = async () => {
+    setDeploying(true);
+    try {
+      const res = await fetch("/api/warp/free/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Cloudflare Free WARP", deviceName: "9Router", acceptTos: true }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Free WARP activation failed");
+      await fetchProxyPools();
+      setShowWarpModal(false);
+      notify.success("Free WARP activated");
+    } catch (error) {
+      notify.error(error.message || "Free WARP activation failed");
+    } finally {
+      setDeploying(false);
+    }
+  };
+
   const handleOfficialWarp = async () => {
     setDetectingWarp(true);
     try {
@@ -1077,7 +1093,8 @@ export default function ProxyPoolsPage() {
             Free WARP does not use Cloudflare account OAuth or a Zero Trust team. Install the official 1.1.1.1/WARP client, enable Local Proxy mode, and connect it. 9Router will verify the WARP egress.
           </div>
           <Button fullWidth onClick={() => window.open("https://1.1.1.1/", "_blank", "noopener,noreferrer")} disabled={detectingWarp || deploying}>Get official WARP</Button>
-          <Button fullWidth variant="secondary" onClick={handleOfficialWarp} disabled={detectingWarp || deploying}>{detectingWarp ? "Detecting free WARP..." : "Detect free WARP"}</Button>
+          <Button fullWidth onClick={handleFreeWarp} disabled={deploying || detectingWarp}>{deploying ? "Activating free WARP..." : "Activate free WARP"}</Button>
+          <Button fullWidth variant="secondary" onClick={handleOfficialWarp} disabled={detectingWarp || deploying}>{detectingWarp ? "Detecting free WARP..." : "Detect installed WARP"}</Button>
           <div className="border-t border-black/10 dark:border-white/10 pt-3 text-xs text-text-muted">Advanced Zero Trust compatibility enrollment</div>
           <div className="border-t border-black/10 dark:border-white/10 pt-3 text-xs text-text-muted">Advanced compatibility enrollment</div>
           <Input label="Team token" value={warpForm.jwt} onChange={(e) => setWarpForm((prev) => ({ ...prev, jwt: e.target.value }))} type="password" placeholder="Paste the Cloudflare team token" />
