@@ -47,7 +47,7 @@ export default function ProxyPoolsPage() {
   const [vercelForm, setVercelForm] = useState({ vercelToken: "", projectName: "vercel-relay" });
   const [cloudflareForm, setCloudflareForm] = useState({ accountId: "", apiToken: "", projectName: "cloudflare-relay" });
   const [denoForm, setDenoForm] = useState({ denoToken: "", orgDomain: "", projectName: "" });
-  const [warpForm, setWarpForm] = useState({ jwt: "", deviceName: "9Router", name: "Cloudflare WARP" });
+  const [warpForm, setWarpForm] = useState({ jwt: "", deviceName: "9Router", name: "Cloudflare WARP", team: "" });
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
   const [deploying, setDeploying] = useState(false);
@@ -436,6 +436,22 @@ export default function ProxyPoolsPage() {
       notify.error("Deploy failed");
     } finally {
       setDeploying(false);
+    }
+  };
+
+  const handleWarpOAuth = async () => {
+    if (!warpForm.team.trim()) return;
+    setDetectingWarp(true);
+    try {
+      const start = await fetch("/api/warp/oauth/start", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ team: warpForm.team }) });
+      const data = await start.json();
+      if (!start.ok) throw new Error(data.error || "Invalid team name");
+      window.open(data.authorizationUrl, "_blank", "noopener,noreferrer");
+      notify.info("Complete Cloudflare login in the official WARP client, then click Detect WARP.");
+    } catch (error) {
+      notify.error(error.message || "Could not start Cloudflare login");
+    } finally {
+      setDetectingWarp(false);
     }
   };
 
@@ -1057,7 +1073,9 @@ export default function ProxyPoolsPage() {
           <div className="rounded-lg bg-orange-500/5 border border-orange-500/10 p-3 text-xs text-text-muted">
             The recommended path is the official Cloudflare WARP client in Local Proxy mode. 9Router will verify its localhost proxy and Cloudflare egress before creating a strict proxy pool.
           </div>
-          <Button fullWidth variant="secondary" onClick={handleOfficialWarp} disabled={detectingWarp || deploying}>{detectingWarp ? "Detecting official WARP..." : "Use installed Cloudflare WARP"}</Button>
+          <Input label="Cloudflare Zero Trust team" value={warpForm.team} onChange={(e) => setWarpForm((prev) => ({ ...prev, team: e.target.value }))} placeholder="your-team-name" hint="This opens Cloudflare&apos;s documented /warp browser enrollment flow." />
+          <Button fullWidth onClick={handleWarpOAuth} disabled={!warpForm.team.trim() || detectingWarp || deploying}>{detectingWarp ? "Opening Cloudflare..." : "Login with Cloudflare Zero Trust"}</Button>
+          <Button fullWidth variant="secondary" onClick={handleOfficialWarp} disabled={detectingWarp || deploying}>{detectingWarp ? "Detecting official WARP..." : "Detect installed WARP"}</Button>
           <div className="border-t border-black/10 dark:border-white/10 pt-3 text-xs text-text-muted">Advanced compatibility enrollment</div>
           <Input label="Team token" value={warpForm.jwt} onChange={(e) => setWarpForm((prev) => ({ ...prev, jwt: e.target.value }))} type="password" placeholder="Paste the Cloudflare team token" />
           <Input label="Pool name" value={warpForm.name} onChange={(e) => setWarpForm((prev) => ({ ...prev, name: e.target.value }))} />
