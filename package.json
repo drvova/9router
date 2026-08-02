@@ -6,12 +6,10 @@
   "scripts": {
     "check": "node scripts/check.mjs",
     "dev": "next dev --port 20128",
-    "dev:webpack": "next dev --webpack --port 20128",
-    "build": "next build --webpack",
-    "build:turbo": "next build --turbopack",
+    "build": "next build --turbopack",
     "start": "next start --port 20128",
-    "dev:bun": "bun --bun next dev --webpack --port 20128",
-    "build:bun": "bun --bun next build --webpack",
+    "dev:bun": "bun --bun next dev --turbopack --port 20128",
+    "build:bun": "bun --bun next build --turbopack",
     "start:bun": "bun ./.next/standalone/server.js",
     "cli:pack": "npm --prefix cli run pack:cli",
     "cli:publish": "npm --prefix cli run publish:cli",
@@ -53,12 +51,15 @@
   "optionalDependencies": {
     "better-sqlite3": "^12.6.2"
   },
-  "comment_better_sqlite3": "kept in optionalDependencies so npm install doesn't fail on systems without build tools \u2014 sql.js is used as fallback at runtime",
+  "comment_better_sqlite3": "kept in optionalDependencies so npm install doesn't fail on systems without build tools — sql.js is used as fallback at runtime",
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.18",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "postcss": "^8.5.6",
-    "tailwindcss": "^4"
-  }
+    "tailwindcss": "^4",
+    "typescript": "^7.0.2",
+    "typescript-language-server": "^5.3.0"
+  },
+  "packageManager": "pnpm@10.33.0+sha512.10568bb4a6afb58c9eb3630da90cc9516417abebd3fabbe6739f0ae795728da1491e9db5a544c76ad8eb7570f5c4bb3d6c637b2cb41bfdcdb47fa823c8649319"
 }
