@@ -42,11 +42,14 @@ export async function POST(request, { params }) {
 
     if (!proxyPool) {
       return NextResponse.json({ error: "Proxy pool not found" }, { status: 404 });
+    const isWarp = proxyPool.type === "warp";
+    if (isWarp && !proxyPool.encryptedProfile) {
+      return NextResponse.json({ error: "WARP proxy pool has no profile — re-enter the WARP profile in the pool settings" }, { status: 400 });
     }
 
     const result = proxyPool.type === "vercel" || proxyPool.type === "cloudflare" || proxyPool.type === "deno"
       ? await testVercelRelay(proxyPool.proxyUrl)
-      : await testProxyUrl({ proxyUrl: proxyPool.type === "warp"
+      : await testProxyUrl({ proxyUrl: isWarp
         ? await startWarpEgress(proxyPool.id, proxyPool.encryptedProfile)
         : proxyPool.proxyUrl });
     const now = new Date().toISOString();

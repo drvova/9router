@@ -5,6 +5,9 @@
 - **Providers**: Anthropic Messages dual transports for 43 providers whose native `/v1/messages` endpoints were verified live (full-registry sweep: 330+ derived candidate URLs probed across 3 rounds, control-404 differentiated, auth header per upstream error evidence) — Moonshot, LongCat, Novita, Synthetic, ModelScope, NanoGPT, StepFun, AIMLAPI, Requesty, SiliconFlow, iFlow, xAI, Mistral, Blackbox, Featherless, Vercel AI Gateway, GLM-CN (bigmodel.cn `/api/anthropic`), OpenCode Go, Tencent Hunyuan, Baidu Qianfan, Heroku, DigitalOcean, Upstage, SenseNova, Qiniu, FriendliAI, Pioneer, Kilo Gateway, LLM7, Kie, OrcaRouter, Alibaba Coding CN+intl (DashScope `claude-code-proxy`), and the new-api gateway family (b.ai, BluesMinds, HCNSec, TokenRouter) … — Claude-format clients now skip the lossy OpenAI translation hop (50 dual-transport providers total)
 - **CLI**: every registry provider is now addable from the terminal menu via a new `➕ Add other provider (search …)` entry backed by a `/api/providers/catalog` endpoint (single source of truth = registry). The curated quick-pick stays short; the full 150+ apikey catalog is searchable. Previously the terminal wizard only offered a hardcoded 7-provider shortlist.
 
+## Fixes
+- **WARP**: fix proxy pool creation dropping the encrypted profile — WARP pools created via the dashboard, `/api/warp/register`, or `/api/warp/free/register` stored no profile, so testing them failed with `Invalid encrypted WARP profile`; test endpoint now returns a clear 400 when a pool has no profile
+
 # v0.5.45 (2026-07-30)
 
 ## Features
