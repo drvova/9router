@@ -10,6 +10,10 @@ const output = path.join(root, "dist", "warp-egress");
 const targets = [
   ["linux", "amd64", "warp-egress-linux-amd64"],
   ["linux", "arm64", "warp-egress-linux-arm64"],
+  ["linux", "386", "warp-egress-linux-386"],
+  ["linux", "arm", "warp-egress-linux-arm"],
+  ["linux", "ppc64le", "warp-egress-linux-ppc64le"],
+  ["linux", "s390x", "warp-egress-linux-s390x"],
   ["darwin", "amd64", "warp-egress-darwin-amd64"],
   ["darwin", "arm64", "warp-egress-darwin-arm64"],
   ["windows", "amd64", "warp-egress-windows-amd64.exe"],

@@ -8,6 +8,7 @@
 ## Fixes
 - **WARP**: fix proxy pool creation dropping the encrypted profile — WARP pools created via the dashboard, `/api/warp/register`, or `/api/warp/free/register` stored no profile, so testing them failed with `Invalid encrypted WARP profile`; test endpoint now returns a clear 400 when a pool has no profile
 - **WARP**: authenticate native CONNECT requests from the standard `Proxy-Authorization` header so Undici proxy tests no longer receive 407 responses reported as `Request was cancelled.`
+- **WARP**: resolve Node/Go arch naming mismatch (`x64` vs `amd64`) in helper binary lookup so `dist/` binaries are found before falling through to `cli/app/`; added `linux-386`, `linux-arm`, `linux-ppc64le`, `linux-s390x` build targets for broader platform coverage
 
 # v0.5.45 (2026-07-30)
 

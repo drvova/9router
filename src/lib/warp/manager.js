@@ -13,10 +13,16 @@ const READY_TIMEOUT_MS = 15000;
 
 function helperPath(requiredFlag = "") {
   const name = process.platform === "win32" ? "warp-egress.exe" : "warp-egress";
-  const target = `${process.platform}-${process.arch}`;
+  const ext = process.platform === "win32" ? ".exe" : "";
+
+  // Node uses x64/arm64; Go uses amd64/arm64; try both to cover all runtimes.
+  const nodeArch = process.arch;
+  const goArch = { x64: "amd64", arm64: "arm64", ia32: "386", arm: "arm", s390x: "s390x", ppc64: "ppc64le" }[nodeArch] || nodeArch;
+  const archs = goArch === nodeArch ? [goArch] : [goArch, nodeArch];
+
   const candidates = [
     process.env.NINE_ROUTER_WARP_EGRESS,
-    path.join(process.cwd(), "dist", "warp-egress", `warp-egress-${target}${process.platform === "win32" ? ".exe" : ""}`),
+    ...archs.map(a => path.join(process.cwd(), "dist", "warp-egress", `warp-egress-${process.platform}-${a}${ext}`)),
     path.join(process.cwd(), "cli", "app", "warp-egress", name),
     path.join(process.cwd(), "warp-egress", name),
   ].filter(Boolean);
