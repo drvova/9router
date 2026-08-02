@@ -2,7 +2,7 @@ import path from "node:path";
 import fs from "node:fs";
 import net from "node:net";
 import crypto from "node:crypto";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
 import { DATA_DIR } from "@/lib/dataDir.js";
 import { decryptWarpProfile, encryptWarpProfile } from "./profileCrypto.js";
@@ -11,18 +11,23 @@ const runtimes = new Map();
 const starting = new Map();
 const READY_TIMEOUT_MS = 15000;
 
-function helperPath() {
+function helperPath(requiredFlag = "") {
   const name = process.platform === "win32" ? "warp-egress.exe" : "warp-egress";
   const target = `${process.platform}-${process.arch}`;
   const candidates = [
     process.env.NINE_ROUTER_WARP_EGRESS,
-    path.join(process.cwd(), "warp-egress", name),
     path.join(process.cwd(), "dist", "warp-egress", `warp-egress-${target}${process.platform === "win32" ? ".exe" : ""}`),
     path.join(process.cwd(), "cli", "app", "warp-egress", name),
+    path.join(process.cwd(), "warp-egress", name),
   ].filter(Boolean);
-  const found = candidates.find((candidate) => fs.existsSync(candidate));
+  const found = candidates.find((candidate) => {
+    if (!fs.existsSync(candidate)) return false;
+    if (!requiredFlag) return true;
+    const result = spawnSync(candidate, ["--help"], { encoding: "utf8", timeout: 5000 });
+    return `${result.stdout || ""}${result.stderr || ""}`.includes(requiredFlag);
+  });
   if (found) return found;
-  throw new Error(`WARP helper is not installed. Build it with \"npm run build:warp\" or set NINE_ROUTER_WARP_EGRESS (tried: ${candidates.join(", ")})`);
+  throw new Error(`WARP helper is missing required capability ${requiredFlag}. Run \"npm run build:warp\" and restart 9Router (tried: ${candidates.join(", ")})`);
 }
 
 function proxyUrl(port, token) {
@@ -53,7 +58,7 @@ function nextPort() {
 
 export async function registerWarpProfile(input = {}) {
   if (input.jwt !== undefined && typeof input.jwt !== "string") throw new Error("Invalid Cloudflare enrollment token");
-  const child = spawn(helperPath(), ["--register-stdin"], { stdio: ["pipe", "pipe", "pipe"], env: process.env });
+  const child = spawn(helperPath("-register-stdin"), ["--register-stdin"], { stdio: ["pipe", "pipe", "pipe"], env: process.env });
   child.stdin.end(JSON.stringify({ jwt: input.jwt, device_name: input.deviceName || "9Router", accept_tos: input.acceptTos === true }));
   const [stdout, stderr] = await Promise.all([
     collect(child.stdout),
