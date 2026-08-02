@@ -48,11 +48,22 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: "WARP proxy pool has no profile — re-enter the WARP profile in the pool settings" }, { status: 400 });
     }
 
-    const result = proxyPool.type === "vercel" || proxyPool.type === "cloudflare" || proxyPool.type === "deno"
-      ? await testVercelRelay(proxyPool.proxyUrl)
-      : await testProxyUrl({ proxyUrl: isWarp
-        ? await startWarpEgress(proxyPool.id, proxyPool.encryptedProfile)
-        : proxyPool.proxyUrl });
+    let result;
+    if (proxyPool.type === "vercel" || proxyPool.type === "cloudflare" || proxyPool.type === "deno") {
+      result = await testVercelRelay(proxyPool.proxyUrl);
+    } else if (isWarp) {
+      const proxyUrl = await startWarpEgress(proxyPool.id, proxyPool.encryptedProfile);
+      result = await testProxyUrl({ proxyUrl });
+      if (!result.ok) {
+        for (let i = 0; i < 2; i++) {
+          await new Promise((r) => setTimeout(r, 3000));
+          result = await testProxyUrl({ proxyUrl });
+          if (result.ok) break;
+        }
+      }
+    } else {
+      result = await testProxyUrl({ proxyUrl: proxyPool.proxyUrl });
+    }
     const now = new Date().toISOString();
 
     await updateProxyPool(id, {
