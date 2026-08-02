@@ -83,7 +83,12 @@ async function collect(stream) {
 }
 
 export async function startWarpEgress(profileId, encryptedProfile) {
-  if (runtimes.has(profileId)) return runtimes.get(profileId).proxyUrl;
+  if (runtimes.has(profileId)) {
+    const runtime = runtimes.get(profileId);
+    try { process.kill(runtime.child.pid, 0); return runtime.proxyUrl; } catch {
+      runtimes.delete(profileId);
+    }
+  }
   if (starting.has(profileId)) return starting.get(profileId);
   const promise = startWarpEgressInternal(profileId, encryptedProfile);
   starting.set(profileId, promise);
