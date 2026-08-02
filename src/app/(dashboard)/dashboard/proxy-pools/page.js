@@ -1073,9 +1073,12 @@ export default function ProxyPoolsPage() {
           <div className="rounded-lg bg-orange-500/5 border border-orange-500/10 p-3 text-xs text-text-muted">
             The recommended path is the official Cloudflare WARP client in Local Proxy mode. 9Router will verify its localhost proxy and Cloudflare egress before creating a strict proxy pool.
           </div>
-          <Input label="Cloudflare Zero Trust team" value={warpForm.team} onChange={(e) => setWarpForm((prev) => ({ ...prev, team: e.target.value }))} placeholder="your-team-name" hint="This opens Cloudflare&apos;s documented /warp browser enrollment flow." />
-          <Button fullWidth onClick={handleWarpOAuth} disabled={!warpForm.team.trim() || detectingWarp || deploying}>{detectingWarp ? "Opening Cloudflare..." : "Login with Cloudflare Zero Trust"}</Button>
-          <Button fullWidth variant="secondary" onClick={handleOfficialWarp} disabled={detectingWarp || deploying}>{detectingWarp ? "Detecting official WARP..." : "Detect installed WARP"}</Button>
+          <div className="rounded-lg border border-black/10 dark:border-white/10 p-3 text-xs text-text-muted">
+            Free WARP does not use Cloudflare account OAuth or a Zero Trust team. Install the official 1.1.1.1/WARP client, enable Local Proxy mode, and connect it. 9Router will verify the WARP egress.
+          </div>
+          <Button fullWidth onClick={() => window.open("https://1.1.1.1/", "_blank", "noopener,noreferrer")} disabled={detectingWarp || deploying}>Get official WARP</Button>
+          <Button fullWidth variant="secondary" onClick={handleOfficialWarp} disabled={detectingWarp || deploying}>{detectingWarp ? "Detecting free WARP..." : "Detect free WARP"}</Button>
+          <div className="border-t border-black/10 dark:border-white/10 pt-3 text-xs text-text-muted">Advanced Zero Trust compatibility enrollment</div>
           <div className="border-t border-black/10 dark:border-white/10 pt-3 text-xs text-text-muted">Advanced compatibility enrollment</div>
           <Input label="Team token" value={warpForm.jwt} onChange={(e) => setWarpForm((prev) => ({ ...prev, jwt: e.target.value }))} type="password" placeholder="Paste the Cloudflare team token" />
           <Input label="Pool name" value={warpForm.name} onChange={(e) => setWarpForm((prev) => ({ ...prev, name: e.target.value }))} />
