@@ -39,6 +39,7 @@ export default function ProxyPoolsPage() {
   const [showCloudflareModal, setShowCloudflareModal] = useState(false);
   const [showDenoModal, setShowDenoModal] = useState(false);
   const [showWarpModal, setShowWarpModal] = useState(false);
+  const [detectingWarp, setDetectingWarp] = useState(false);
   const [showRelayMenu, setShowRelayMenu] = useState(false);
   const [editingProxyPool, setEditingProxyPool] = useState(null);
   const [formData, setFormData] = useState(normalizeFormData());
@@ -435,6 +436,22 @@ export default function ProxyPoolsPage() {
       notify.error("Deploy failed");
     } finally {
       setDeploying(false);
+    }
+  };
+
+  const handleOfficialWarp = async () => {
+    setDetectingWarp(true);
+    try {
+      const res = await fetch("/api/warp/local-pool", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Cloudflare WARP (official)" }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Official WARP was not detected");
+      await fetchProxyPools();
+      setShowWarpModal(false);
+      notify.success(`Official WARP connected${data.colo ? ` via ${data.colo}` : ""}`);
+    } catch (error) {
+      notify.error(error.message || "Official WARP was not detected");
+    } finally {
+      setDetectingWarp(false);
     }
   };
 
@@ -1038,8 +1055,10 @@ export default function ProxyPoolsPage() {
       <Modal isOpen={showWarpModal} title="Login with Cloudflare WARP" onClose={() => !deploying && setShowWarpModal(false)}>
         <div className="flex flex-col gap-4">
           <div className="rounded-lg bg-orange-500/5 border border-orange-500/10 p-3 text-xs text-text-muted">
-            Cloudflare Zero Trust enrollment uses a browser-generated team token. Open your team&apos;s <code>/warp</code> login page, authenticate, and paste the token supplied by Cloudflare. The token is used once; the MASQUE profile is encrypted server-side.
+            The recommended path is the official Cloudflare WARP client in Local Proxy mode. 9Router will verify its localhost proxy and Cloudflare egress before creating a strict proxy pool.
           </div>
+          <Button fullWidth variant="secondary" onClick={handleOfficialWarp} disabled={detectingWarp || deploying}>{detectingWarp ? "Detecting official WARP..." : "Use installed Cloudflare WARP"}</Button>
+          <div className="border-t border-black/10 dark:border-white/10 pt-3 text-xs text-text-muted">Advanced compatibility enrollment</div>
           <Input label="Team token" value={warpForm.jwt} onChange={(e) => setWarpForm((prev) => ({ ...prev, jwt: e.target.value }))} type="password" placeholder="Paste the Cloudflare team token" />
           <Input label="Pool name" value={warpForm.name} onChange={(e) => setWarpForm((prev) => ({ ...prev, name: e.target.value }))} />
           <Input label="Device name" value={warpForm.deviceName} onChange={(e) => setWarpForm((prev) => ({ ...prev, deviceName: e.target.value }))} />
