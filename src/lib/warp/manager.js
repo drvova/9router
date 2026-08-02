@@ -9,7 +9,9 @@ const runtimes = new Map();
 const READY_TIMEOUT_MS = 15000;
 
 function helperPath() {
-  return process.env.NINE_ROUTER_WARP_EGRESS || path.join(process.cwd(), "warp-egress", "warp-egress");
+  if (process.env.NINE_ROUTER_WARP_EGRESS) return process.env.NINE_ROUTER_WARP_EGRESS;
+  const name = process.platform === "win32" ? "warp-egress.exe" : "warp-egress";
+  return path.join(process.cwd(), "warp-egress", name);
 }
 
 function waitReady(child, port) {

@@ -259,8 +259,34 @@ if (fs.existsSync(updaterSrc)) {
   console.log("⏭️  No updater files found\n");
 }
 
-// Step 8: Build MITM server (config driven - see app/cli/scripts/buildMitm.js)
-console.log("8️⃣  Building MITM server...");
+// Step 8: Build the native WARP egress helper for this release target.
+// The helper is deliberately built during packaging, never downloaded or executed
+// at install time. Cross-platform release builds should run this script per target.
+console.log("8️⃣  Building native WARP egress helper...");
+const warpSourceDir = path.join(appDir, "warp-egress");
+const warpDestDir = path.join(cliAppDir, "warp-egress");
+const warpBinaryName = process.platform === "win32" ? "warp-egress.exe" : "warp-egress";
+const warpBinaryDest = path.join(warpDestDir, warpBinaryName);
+if (!fs.existsSync(path.join(warpSourceDir, "go.mod"))) {
+  console.error("❌ warp-egress/go.mod not found");
+  process.exit(1);
+}
+try {
+  fs.mkdirSync(warpDestDir, { recursive: true });
+  execSync(`go build -trimpath -ldflags="-s -w" -o "${warpBinaryDest}" .`, {
+    cwd: warpSourceDir,
+    stdio: "inherit",
+    env: { ...process.env, CGO_ENABLED: "0", GOTOOLCHAIN: "auto" },
+  });
+  if (process.platform !== "win32") fs.chmodSync(warpBinaryDest, 0o755);
+  console.log(`✅ Built ${path.relative(cliAppDir, warpBinaryDest)}\n`);
+} catch (error) {
+  console.error("❌ WARP egress helper build failed. Install Go and rerun the CLI package build.");
+  process.exit(1);
+}
+
+// Step 9: Build MITM server (config driven - see app/cli/scripts/buildMitm.js)
+console.log("9️⃣  Building MITM server...");
 try {
   execSync("node scripts/buildMitm.js", { stdio: "inherit", cwd: cliDir });
   console.log("✅ MITM server build completed\n");
