@@ -39,6 +39,60 @@ type profile struct {
 	EndpointPubKey string `json:"endpoint_pub_key"`
 }
 
+type registrationInput struct {
+	JWT        string `json:"jwt"`
+	DeviceName string `json:"device_name"`
+	AcceptTOS  bool   `json:"accept_tos"`
+}
+
+func registerProfile(input registrationInput) (profile, error) {
+	if strings.TrimSpace(input.JWT) == "" {
+		return profile{}, errors.New("Cloudflare Zero Trust team token is required")
+	}
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return profile{}, fmt.Errorf("generate MASQUE key: %w", err)
+	}
+	der, err := x509.MarshalECPrivateKey(privateKey)
+	if err != nil {
+		return profile{}, fmt.Errorf("marshal MASQUE key: %w", err)
+	}
+	account, err := warp.Register("PC", "en_US", input.JWT, input.AcceptTOS)
+	if err != nil {
+		return profile{}, fmt.Errorf("register WARP device: %w", err)
+	}
+	pub, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
+	if err != nil {
+		return profile{}, fmt.Errorf("marshal MASQUE public key: %w", err)
+	}
+	updated, err := warp.EnrollKey(account.ID, account.Token, pub, input.DeviceName)
+	if err != nil {
+		return profile{}, fmt.Errorf("enroll MASQUE key: %w", err)
+	}
+	if len(updated.Config.Peers) == 0 {
+		return profile{}, errors.New("Cloudflare returned no MASQUE peer")
+	}
+	peer := updated.Config.Peers[0]
+	endpoint := strings.TrimSuffix(strings.TrimSuffix(peer.Endpoint.V4, ":443"), ":0")
+	if net.ParseIP(endpoint) == nil {
+		return profile{}, fmt.Errorf("invalid MASQUE endpoint returned by Cloudflare: %q", peer.Endpoint.V4)
+	}
+	return profile{PrivateKey: base64.StdEncoding.EncodeToString(der), EndpointV4: endpoint, EndpointPubKey: peer.PublicKey}, nil
+}
+
+func runRegistration() error {
+	var input registrationInput
+	decoder := json.NewDecoder(os.Stdin)
+	if err := decoder.Decode(&input); err != nil {
+		return fmt.Errorf("read registration request: %w", err)
+	}
+	result, err := registerProfile(input)
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(os.Stdout).Encode(result)
+}
+
 func loadProfile(path string) (profile, error) {
 	body, err := os.ReadFile(path)
 	if err != nil {
@@ -192,11 +246,18 @@ func proxyHandler(proxy *warp.L4Proxy, authToken string) http.Handler {
 }
 
 func main() {
+	register := flag.Bool("register-stdin", false, "register a WARP MASQUE profile from JSON on stdin")
 	configPath := flag.String("config", "config.json", "WARP profile JSON path")
 	bind := flag.String("bind", "127.0.0.1", "local proxy bind address")
 	port := flag.Int("port", defaultPort, "local HTTP CONNECT proxy port")
 	authToken := flag.String("token", "", "required local proxy token")
 	flag.Parse()
+	if *register {
+		if err := runRegistration(); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 	if *bind != "127.0.0.1" && *bind != "::1" {
 		log.Fatal("bind must be loopback-only")
 	}

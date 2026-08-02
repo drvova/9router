@@ -4,7 +4,7 @@ import crypto from "node:crypto";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { DATA_DIR } from "@/lib/dataDir.js";
-import { decryptWarpProfile } from "./profileCrypto.js";
+import { decryptWarpProfile, encryptWarpProfile } from "./profileCrypto.js";
 
 const runtimes = new Map();
 const starting = new Map();
@@ -42,16 +42,32 @@ function nextPort() {
   return 17080 + runtimes.size;
 }
 
+export async function registerWarpProfile(input) {
+  if (!input?.jwt || typeof input.jwt !== "string") throw new Error("Cloudflare Zero Trust team token is required");
+  const child = spawn(helperPath(), ["--register-stdin"], { stdio: ["pipe", "pipe", "pipe"], env: process.env });
+  child.stdin.end(JSON.stringify({ jwt: input.jwt, device_name: input.deviceName || "9Router", accept_tos: input.acceptTos === true }));
+  const [stdout, stderr] = await Promise.all([
+    collect(child.stdout),
+    collect(child.stderr),
+  ]);
+  const [code] = await once(child, "exit");
+  if (code !== 0) throw new Error(stderr.trim() || `WARP registration failed (${code})`);
+  const profile = JSON.parse(stdout);
+  return encryptWarpProfile(profile);
+}
+
+async function collect(stream) {
+  const chunks = [];
+  for await (const chunk of stream) chunks.push(chunk);
+  return Buffer.concat(chunks).toString("utf8");
+}
+
 export async function startWarpEgress(profileId, encryptedProfile) {
   if (runtimes.has(profileId)) return runtimes.get(profileId).proxyUrl;
   if (starting.has(profileId)) return starting.get(profileId);
   const promise = startWarpEgressInternal(profileId, encryptedProfile);
   starting.set(profileId, promise);
-  try {
-    return await promise;
-  } finally {
-    starting.delete(profileId);
-  }
+  try { return await promise; } finally { starting.delete(profileId); }
 }
 
 async function startWarpEgressInternal(profileId, encryptedProfile) {
@@ -63,9 +79,7 @@ async function startWarpEgressInternal(profileId, encryptedProfile) {
   const token = crypto.randomUUID().replaceAll("-", "");
   const child = spawn(helperPath(), ["--config", profilePath, "--bind", "127.0.0.1", "--port", String(port), "--token", token], { stdio: ["ignore", "pipe", "pipe"], env: process.env });
   child.stderr?.on("data", (data) => console.error(`[WARP] ${data.toString().trim()}`));
-  try {
-    await waitReady(child, port);
-  } catch (error) {
+  try { await waitReady(child, port); } catch (error) {
     child.kill("SIGTERM");
     await fs.unlink(profilePath).catch(() => {});
     throw error;

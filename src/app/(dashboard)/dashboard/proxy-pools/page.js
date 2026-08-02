@@ -37,6 +37,7 @@ export default function ProxyPoolsPage() {
   const [showVercelModal, setShowVercelModal] = useState(false);
   const [showCloudflareModal, setShowCloudflareModal] = useState(false);
   const [showDenoModal, setShowDenoModal] = useState(false);
+  const [showWarpModal, setShowWarpModal] = useState(false);
   const [showRelayMenu, setShowRelayMenu] = useState(false);
   const [editingProxyPool, setEditingProxyPool] = useState(null);
   const [formData, setFormData] = useState(normalizeFormData());
@@ -44,6 +45,7 @@ export default function ProxyPoolsPage() {
   const [vercelForm, setVercelForm] = useState({ vercelToken: "", projectName: "vercel-relay" });
   const [cloudflareForm, setCloudflareForm] = useState({ accountId: "", apiToken: "", projectName: "cloudflare-relay" });
   const [denoForm, setDenoForm] = useState({ denoToken: "", orgDomain: "", projectName: "" });
+  const [warpForm, setWarpForm] = useState({ jwt: "", deviceName: "9Router", name: "Cloudflare WARP" });
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
   const [deploying, setDeploying] = useState(false);
@@ -435,6 +437,28 @@ export default function ProxyPoolsPage() {
     }
   };
 
+  const handleWarpRegister = async () => {
+    if (!warpForm.jwt.trim()) return;
+    setDeploying(true);
+    try {
+      const res = await fetch("/api/warp/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(warpForm),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "WARP enrollment failed");
+      await fetchProxyPools();
+      setShowWarpModal(false);
+      setWarpForm({ jwt: "", deviceName: "9Router", name: "Cloudflare WARP" });
+      notify.success("Cloudflare WARP enrolled");
+    } catch (error) {
+      notify.error(error.message || "WARP enrollment failed");
+    } finally {
+      setDeploying(false);
+    }
+  };
+
   const handleDenoDeploy = async () => {
     if (!denoForm.denoToken.trim()) return;
     setDeploying(true);
@@ -608,6 +632,16 @@ export default function ProxyPoolsPage() {
 
             {showRelayMenu && (
               <div className="absolute left-0 top-full z-50 mt-1 w-48 rounded-xl border border-black/10 bg-white p-1 shadow-xl dark:border-white/10 dark:bg-zinc-900 sm:left-auto sm:right-0">
+                <button
+                  onClick={() => {
+                    setShowWarpModal(true);
+                    setShowRelayMenu(false);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-main transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                >
+                  <span className="material-symbols-outlined text-[20px] text-orange-500">vpn_key</span>
+                  Login with WARP
+                </button>
                 <button
                   onClick={() => {
                     openCloudflareModal();
@@ -996,6 +1030,21 @@ export default function ProxyPoolsPage() {
             <Button fullWidth variant="ghost" onClick={closeDenoModal} disabled={deploying}>
               Cancel
             </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={showWarpModal} title="Login with Cloudflare WARP" onClose={() => !deploying && setShowWarpModal(false)}>
+        <div className="flex flex-col gap-4">
+          <div className="rounded-lg bg-orange-500/5 border border-orange-500/10 p-3 text-xs text-text-muted">
+            Cloudflare Zero Trust enrollment uses a browser-generated team token. Open your team&apos;s <code>/warp</code> login page, authenticate, and paste the token supplied by Cloudflare. The token is used once; the MASQUE profile is encrypted server-side.
+          </div>
+          <Input label="Team token" value={warpForm.jwt} onChange={(e) => setWarpForm((prev) => ({ ...prev, jwt: e.target.value }))} type="password" placeholder="Paste the Cloudflare team token" />
+          <Input label="Pool name" value={warpForm.name} onChange={(e) => setWarpForm((prev) => ({ ...prev, name: e.target.value }))} />
+          <Input label="Device name" value={warpForm.deviceName} onChange={(e) => setWarpForm((prev) => ({ ...prev, deviceName: e.target.value }))} />
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <Button fullWidth onClick={handleWarpRegister} disabled={!warpForm.jwt.trim() || deploying}>{deploying ? "Enrolling..." : "Enroll WARP"}</Button>
+            <Button fullWidth variant="ghost" onClick={() => setShowWarpModal(false)} disabled={deploying}>Cancel</Button>
           </div>
         </div>
       </Modal>
