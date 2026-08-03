@@ -13,6 +13,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"math/big"
 	"net"
@@ -22,6 +23,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"golang.org/x/net/http2"
 
 	warp "github.com/Diniboy1123/usque/api"
 	quic "github.com/quic-go/quic-go"
@@ -173,19 +176,15 @@ func quicConfig() *quic.Config {
 	}
 }
 
-func newProxy(p profile) (*warp.L4Proxy, error) {
-	tls, err := clientTLS(p)
-	if err != nil {
-		return nil, err
-	}
-	endpoint := net.ParseIP(p.EndpointV4)
-	if endpoint == nil {
+func newProxyWithTLS(p profile, tlsCfg *tls.Config) (*warp.L4Proxy, error) {
+	endpointIP := net.ParseIP(p.EndpointV4)
+	if endpointIP == nil {
 		return nil, fmt.Errorf("invalid endpoint_v4 %q", p.EndpointV4)
 	}
 	return warp.NewL4Proxy(warp.L4ProxyConfig{
-		TLSConfig:         tls,
+		TLSConfig:         tlsCfg,
 		QUICConfig:        quicConfig(),
-		Endpoint:          &net.UDPAddr{IP: endpoint, Port: 443},
+		Endpoint:          &net.UDPAddr{IP: endpointIP, Port: 443},
 		ResolveLocally:    false,
 		ConnectTimeout:    connectTimeout,
 		ConnectRetryCount: 2,
@@ -211,7 +210,63 @@ func proxyBasicAuth(r *http.Request) (string, string, bool) {
 	return credentials[0], credentials[1], true
 }
 
-func proxyHandler(proxy *warp.L4Proxy, authToken string) http.Handler {
+type h2Conn struct {
+	conn io.ReadWriteCloser
+	addr string
+}
+
+func (c *h2Conn) Read(b []byte) (int, error)  { return c.conn.Read(b) }
+func (c *h2Conn) Write(b []byte) (int, error) { return c.conn.Write(b) }
+func (c *h2Conn) Close() error                { return c.conn.Close() }
+func (c *h2Conn) LocalAddr() net.Addr         { return &net.TCPAddr{} }
+func (c *h2Conn) RemoteAddr() net.Addr {
+	return &net.TCPAddr{IP: net.ParseIP("162.159.198.2"), Port: 443}
+}
+func (c *h2Conn) SetDeadline(t time.Time) error      { return nil }
+func (c *h2Conn) SetReadDeadline(t time.Time) error  { return nil }
+func (c *h2Conn) SetWriteDeadline(t time.Time) error { return nil }
+
+func dialH2(ctx context.Context, tlsCfg *tls.Config, target string) (net.Conn, error) {
+	h2Endpoint := net.JoinHostPort("162.159.198.2", "443")
+
+	h2TLS := tlsCfg.Clone()
+	h2TLS.NextProtos = []string{"h2"}
+	h2TLS.ServerName = warpProxySNI
+
+	dialer := &net.Dialer{Timeout: connectTimeout}
+	rawConn, err := tls.DialWithDialer(dialer, "tcp", h2Endpoint, h2TLS)
+	if err != nil {
+		return nil, fmt.Errorf("TCP connect to %s: %w", h2Endpoint, err)
+	}
+	h2Transport := &http2.Transport{
+		DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
+			return rawConn, nil
+		},
+	}
+	h2Client := &http.Client{Transport: h2Transport}
+	connectReq, err := http.NewRequestWithContext(ctx, http.MethodConnect, "https://"+target, nil)
+	if err != nil {
+		_ = rawConn.Close()
+		return nil, fmt.Errorf("build CONNECT request: %w", err)
+	}
+	connectReq.Host = target
+	connectReq.Header.Set("cf-connect-proto", "cf-connect-ip")
+	connectReq.Header.Set("pq-enabled", "false")
+	connectReq.Header.Set("User-Agent", "")
+	resp, err := h2Client.Do(connectReq)
+	if err != nil {
+		_ = rawConn.Close()
+		return nil, fmt.Errorf("HTTP/2 CONNECT: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		_ = resp.Body.Close()
+		_ = rawConn.Close()
+		return nil, fmt.Errorf("HTTP/2 CONNECT rejected with status %d", resp.StatusCode)
+	}
+	return rawConn, nil
+}
+
+func proxyHandler(proxy *warp.L4Proxy, tlsCfg *tls.Config, authToken string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodConnect {
 			http.Error(w, "CONNECT required", http.StatusMethodNotAllowed)
@@ -233,9 +288,13 @@ func proxyHandler(proxy *warp.L4Proxy, authToken string) http.Handler {
 		defer cancel()
 		upstream, err := proxy.DialContext(ctx, r.Host)
 		if err != nil {
-			log.Printf("[WARP] dial %s failed: %v", r.Host, err)
-			http.Error(w, "WARP connection failed", http.StatusBadGateway)
-			return
+			log.Printf("[WARP] QUIC dial %s failed: %v, trying HTTP/2", r.Host, err)
+			upstream, err = dialH2(ctx, tlsCfg, r.Host)
+			if err != nil {
+				log.Printf("[WARP] HTTP/2 dial %s failed: %v", r.Host, err)
+				http.Error(w, "WARP connection failed", http.StatusBadGateway)
+				return
+			}
 		}
 		hijacker, ok := w.(http.Hijacker)
 		if !ok {
@@ -282,11 +341,15 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	proxy, err := newProxy(p)
+	tlsCfg, err := clientTLS(p)
 	if err != nil {
 		log.Fatal(err)
 	}
-	server := &http.Server{Addr: net.JoinHostPort(*bind, fmt.Sprint(*port)), Handler: proxyHandler(proxy, *authToken), ReadHeaderTimeout: 10 * time.Second}
+	proxy, err := newProxyWithTLS(p, tlsCfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	server := &http.Server{Addr: net.JoinHostPort(*bind, fmt.Sprint(*port)), Handler: proxyHandler(proxy, tlsCfg, *authToken), ReadHeaderTimeout: 10 * time.Second}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	go func() { <-ctx.Done(); _ = server.Shutdown(context.Background()) }()
