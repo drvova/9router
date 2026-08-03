@@ -46,6 +46,7 @@ export const NAV_SECTIONS = [
     id: "tools",
     label: "Tools",
     items: [
+      { href: "/dashboard/basic-chat",   label: "Chat Playground",                    icon: "chat",      description: "Test providers in an interactive chat playground" },
       { href: "/dashboard/cli-tools",    label: "CLI Tools",                          icon: "terminal",  description: "Configure CLI tools" },
       { href: "/dashboard/skills",       label: "Skills", title: "Agent Skills",      icon: "extension", description: "Copy a link and paste to your AI to use 9Router — no install needed" },
       { href: "/dashboard/proxy-pools",  label: "Proxy Pools",                        icon: "lan",       description: "Manage your proxy pool configurations" },
