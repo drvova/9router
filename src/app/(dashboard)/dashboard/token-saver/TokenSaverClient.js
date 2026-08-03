@@ -495,6 +495,7 @@ export default function TokenSaverClient() {
           <Toggle
             checked={rtkEnabled}
             onChange={() => handleRtkEnabled(!rtkEnabled)}
+            ariaLabel="RTK token saver"
           />
         </div>
         <div className="flex items-center justify-between py-4 gap-4 flex-wrap">
@@ -532,6 +533,7 @@ export default function TokenSaverClient() {
             checked={headroomEnabled && headroomRunning}
             disabled={!headroomRunning}
             onChange={() => handleHeadroomEnabled(!headroomEnabled)}
+            ariaLabel="Headroom compression"
           />
         </div>
         {headroomStatus.installed && (
@@ -562,6 +564,7 @@ export default function TokenSaverClient() {
                         checked={active}
                         disabled={restartingProxy}
                         onChange={() => toggleExtraActive(extra, !active)}
+                        ariaLabel={`${active ? "Disable" : "Enable"} ${extra} token saver`}
                       />
                       <span className="font-medium">[{extra}]</span>
                       <button
@@ -679,6 +682,7 @@ export default function TokenSaverClient() {
             <Toggle
               checked={cavemanEnabled}
               onChange={() => handleCavemanEnabled(!cavemanEnabled)}
+              ariaLabel="Caveman mode"
             />
           </div>
         </div>
@@ -730,6 +734,7 @@ export default function TokenSaverClient() {
             <Toggle
               checked={ponytailEnabled}
               onChange={() => handlePonytailEnabled(!ponytailEnabled)}
+              ariaLabel="Ponytail mode"
             />
           </div>
         </div>
@@ -776,6 +781,7 @@ export default function TokenSaverClient() {
             checked={pxpipeEnabled}
             disabled={!pxpipeStatus.installed}
             onChange={() => handlePxpipeEnabled(!pxpipeEnabled)}
+            ariaLabel="PXPIPE"
           />
         </div>
         )}

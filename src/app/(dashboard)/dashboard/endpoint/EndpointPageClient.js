@@ -727,9 +727,10 @@ export default function APIPageClient({ machineId }) {
             }`}>Tunnel</span>
             {tunnelEnabled && !tunnelLoading && tunnelReachable ? (
               <>
-                <Input value={`${tunnelPublicUrl || tunnelUrl}/v1`} readOnly className="flex-1 font-mono text-sm" />
+                <Input value={`${tunnelPublicUrl || tunnelUrl}/v1`} readOnly aria-label="Cloudflare Tunnel endpoint URL" className="flex-1 font-mono text-sm" />
                 <button
                   onClick={() => copy(`${tunnelPublicUrl || tunnelUrl}/v1`, "tunnel_url")}
+                  aria-label="Copy tunnel URL"
                   className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded text-text-muted hover:text-primary transition-colors shrink-0"
                 >
                   <span className="material-symbols-outlined text-[18px]">{copied === "tunnel_url" ? "check" : "content_copy"}</span>
@@ -819,9 +820,10 @@ export default function APIPageClient({ machineId }) {
             }`}>Tailscale</span>
             {tsEnabled && !tsLoading && tsReachable ? (
               <>
-                <Input value={`${tsUrl}/v1`} readOnly className="flex-1 font-mono text-sm" />
+                <Input value={`${tsUrl}/v1`} readOnly aria-label="Tailscale endpoint URL" className="flex-1 font-mono text-sm" />
                 <button
                   onClick={() => copy(`${tsUrl}/v1`, "ts_url")}
+                  aria-label="Copy Tailscale URL"
                   className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded text-text-muted hover:text-primary transition-colors shrink-0"
                 >
                   <span className="material-symbols-outlined text-[18px]">{copied === "ts_url" ? "check" : "content_copy"}</span>
@@ -939,6 +941,7 @@ export default function APIPageClient({ machineId }) {
             <Toggle
               checked={tunnelDashboardAccess}
               onChange={() => handleTunnelDashboardAccess(!tunnelDashboardAccess)}
+              ariaLabel="Allow dashboard access via tunnel"
             />
             <div className="flex items-center gap-1.5">
               <p className="font-medium text-sm">Allow dashboard access via tunnel</p>
@@ -970,6 +973,7 @@ export default function APIPageClient({ machineId }) {
           <Toggle
             checked={requireApiKey}
             onChange={() => handleRequireApiKey(!requireApiKey)}
+            ariaLabel="Require API key"
           />
         </div>
 
@@ -1005,8 +1009,9 @@ export default function APIPageClient({ machineId }) {
                     </code>
                     <button
                       onClick={() => toggleKeyVisibility(key.id)}
-                      className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded text-text-muted hover:text-primary opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all"
+                      aria-label={visibleKeys.has(key.id) ? "Hide key" : "Show key"}
                       title={visibleKeys.has(key.id) ? "Hide key" : "Show key"}
+                      className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded text-text-muted hover:text-primary opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all"
                     >
                       <span className="material-symbols-outlined text-[14px]">
                         {visibleKeys.has(key.id) ? "visibility_off" : "visibility"}
@@ -1014,6 +1019,8 @@ export default function APIPageClient({ machineId }) {
                     </button>
                     <button
                       onClick={() => copy(key.key, key.id)}
+                      aria-label="Copy API key"
+                      title="Copy API key"
                       className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded text-text-muted hover:text-primary opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all"
                     >
                       <span className="material-symbols-outlined text-[14px]">
@@ -1046,6 +1053,7 @@ export default function APIPageClient({ machineId }) {
                         handleToggleKey(key.id, checked);
                       }
                     }}
+                    ariaLabel={`${key.isActive ? "Pause" : "Resume"} API key ${key.name}`}
                     title={key.isActive ? "Pause key" : "Resume key"}
                   />
                   <button

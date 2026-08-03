@@ -11,7 +11,7 @@ import Footer from "./components/Footer";
 export default function LandingPage() {
   const router = useRouter();
   return (
-    <div className="relative text-white font-sans overflow-x-hidden antialiased selection:bg-[#f97815] selection:text-white">
+    <div className="relative bg-[#181411] text-white font-sans overflow-x-hidden antialiased selection:bg-[#f97815] selection:text-white">
       {/* Animated Background */}
       <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none bg-[#181411]">
         {/* Grid pattern */}

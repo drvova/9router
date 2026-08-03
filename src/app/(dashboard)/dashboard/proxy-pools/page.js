@@ -1159,6 +1159,7 @@ export default function ProxyPoolsPage() {
               checked={formData.isActive === true}
               onChange={() => setFormData((prev) => ({ ...prev, isActive: !prev.isActive }))}
               disabled={saving}
+              ariaLabel="Active"
             />
           </div>
 
@@ -1171,6 +1172,7 @@ export default function ProxyPoolsPage() {
               checked={formData.strictProxy === true}
               onChange={() => setFormData((prev) => ({ ...prev, strictProxy: !prev.strictProxy }))}
               disabled={saving}
+              ariaLabel="Strict proxy"
             />
           </div>
 

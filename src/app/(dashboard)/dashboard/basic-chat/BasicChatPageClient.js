@@ -925,6 +925,7 @@ export default function BasicChatPageClient() {
             <div className="mx-auto w-full max-w-3xl px-4 pb-2">
               <div className="rounded-[26px] bg-[#2f2f2f] px-3 pt-3 pb-2 shadow-[0_0_15px_rgba(0,0,0,0.10)] ring-1 ring-white/5">
                 <textarea
+                  aria-label="Message AI"
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
                   onKeyDown={handleKeyDown}
@@ -935,20 +936,20 @@ export default function BasicChatPageClient() {
 
                 <div className="mt-2 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
-                    <button type="button" onClick={() => fileInputRef.current?.click()} disabled={!activeModel || loadingData} className="p-2 text-white/50 hover:text-white transition rounded-full hover:bg-white/5">
+                    <button type="button" onClick={() => fileInputRef.current?.click()} disabled={!activeModel || loadingData} aria-label="Attach image" className="p-2 text-white/50 hover:text-white transition rounded-full hover:bg-white/5">
                       <span className="material-symbols-outlined text-[20px]">attach_file</span>
                     </button>
                     <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleAttachFiles} />
-                    <span className="text-xs font-medium text-white/30 truncate max-w-[120px]">{activeModel ? activeModel.name : "No model"}</span>
+                    <span className="text-xs font-medium text-white/55 truncate max-w-[120px]">{activeModel ? activeModel.name : "No model"}</span>
                   </div>
 
                   <div className="flex items-center gap-2">
                     {isSending ? (
-                      <button type="button" onClick={handleStop} className="p-2 text-white bg-white/10 hover:bg-white/20 transition rounded-full h-8 w-8 flex items-center justify-center">
+                      <button type="button" onClick={handleStop} aria-label="Stop generating" className="p-2 text-white bg-white/10 hover:bg-white/20 transition rounded-full h-8 w-8 flex items-center justify-center">
                         <span className="material-symbols-outlined text-[16px]">stop</span>
                       </button>
                     ) : null}
-                    <button onClick={sendMessage} disabled={!canSend} className={`h-8 w-8 rounded-full flex items-center justify-center transition ${canSend ? 'bg-white text-black hover:opacity-90' : 'bg-white/10 text-white/30 cursor-not-allowed'}`}>
+                    <button onClick={sendMessage} disabled={!canSend} aria-label="Send message" className={`h-8 w-8 rounded-full flex items-center justify-center transition ${canSend ? 'bg-white text-black hover:opacity-90' : 'bg-white/10 text-white/30 cursor-not-allowed'}`}>
                       <span className="material-symbols-outlined text-[16px]">arrow_upward</span>
                     </button>
                   </div>
@@ -957,7 +958,7 @@ export default function BasicChatPageClient() {
             </div>
           </div>
 
-          <p className="mx-auto mt-2 max-w-3xl px-4 pb-4 text-center text-[11px] text-white/30">
+          <p className="mx-auto mt-2 max-w-3xl px-4 pb-4 text-center text-[11px] text-white/55">
             Model list is filtered from connected providers.
           </p>
         </div>

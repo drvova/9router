@@ -690,6 +690,7 @@ export default function ProfilePage() {
                 checked={settings.requireLogin === true}
                 onChange={() => updateRequireLogin(!settings.requireLogin)}
                 disabled={loading}
+                ariaLabel="Require login"
               />
             </div>
             {settings.requireLogin === true && (
@@ -935,6 +936,7 @@ export default function ProfilePage() {
                 checked={settings.fallbackStrategy === "round-robin"}
                 onChange={() => updateFallbackStrategy(settings.fallbackStrategy === "round-robin" ? "fill-first" : "round-robin")}
                 disabled={loading}
+                ariaLabel="Round-robin fallback strategy"
               />
             </div>
 
@@ -971,6 +973,7 @@ export default function ProfilePage() {
                 checked={settings.comboStrategy === "round-robin"}
                 onChange={() => updateComboStrategy(settings.comboStrategy === "round-robin" ? "fallback" : "round-robin")}
                 disabled={loading}
+                ariaLabel="Round-robin combo strategy"
               />
             </div>
 
@@ -1025,6 +1028,7 @@ export default function ProfilePage() {
                 checked={settings.outboundProxyEnabled === true}
                 onChange={() => updateOutboundProxyEnabled(!(settings.outboundProxyEnabled === true))}
                 disabled={loading || proxyLoading}
+                ariaLabel="Outbound proxy"
               />
             </div>
 
@@ -1097,6 +1101,7 @@ export default function ProfilePage() {
               checked={observabilityEnabled}
               onChange={updateObservabilityEnabled}
               disabled={loading}
+              ariaLabel="Observability logging"
             />
           </div>
         </Card>

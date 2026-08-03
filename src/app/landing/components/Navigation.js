@@ -14,7 +14,7 @@ export default function Navigation() {
           type="button"
           className="flex items-center gap-3 cursor-pointer bg-transparent border-none p-0"
           onClick={() => router.push("/")}
-          aria-label="Navigate to home"
+          aria-label="9Router home"
         >
           <div className="size-8 rounded bg-linear-to-br from-[#f97815] to-orange-700 flex items-center justify-center text-white">
             <span className="material-symbols-outlined text-[20px]">hub</span>
