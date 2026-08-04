@@ -769,14 +769,11 @@ export default function ProviderDetailPage() {
   const handleImportModels = async () => {
     if (importingModels) return;
     const activeConnection = connections.find((conn) => conn.isActive !== false);
-    // noAuth providers list their catalog keyless — no stored connection needed.
-    if (!activeConnection && !providerInfo?.noAuth) {
-      alert(translate("Please add an active connection first"));
-      return;
-    }
 
     setImportingModels(true);
     try {
+      // Connection-less providers import keyless from their catalog endpoint — the
+      // route attempts the fetch and surfaces the upstream verdict.
       const res = await fetch(`/api/providers/${activeConnection ? activeConnection.id : providerId}/models`, { cache: "no-store" });
       const data = await res.json();
       if (!res.ok) {
@@ -1413,9 +1410,8 @@ export default function ProviderDetailPage() {
           Add Model
         </button>
 
-        {/* Import the provider's live /models catalog — needs an active connection, unless the provider is noAuth */}
-        {(connections.some((conn) => conn.isActive !== false) || providerInfo?.noAuth) && (
-          <button
+        {/* Import the provider's live /models catalog — works connection-less when the endpoint is keyless */}
+        <button
             onClick={handleImportModels}
             disabled={importingModels}
             className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-blue-500/40 px-3 py-2 text-xs text-blue-600 dark:text-blue-400 transition-colors hover:border-blue-500 hover:bg-blue-500/5 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1425,7 +1421,6 @@ export default function ProviderDetailPage() {
             </span>
             {importingModels ? translate("Fetching...") : translate("Import from /models")}
           </button>
-        )}
 
         {/* Suggested models from provider API — show only models not yet added */}
         {suggestedModels.length > 0 && (() => {

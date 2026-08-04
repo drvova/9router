@@ -599,12 +599,12 @@ export async function GET(request, { params }) {
     const { id } = await params;
     const connection = await getProviderConnectionById(id);
 
-    // Providers flagged noAuth in the registry list their catalog keyless — no
-    // stored connection or key required. id resolves to a provider id when no
-    // connection row exists.
+    // With no connection row, id resolves to a provider id. Some endpoints serve
+    // their catalog keyless, so attempt a keyless fetch and let the upstream
+    // decide — only reject ids that aren't a known provider at all.
     const providerId = connection?.provider || id;
     const providerInfo = AI_PROVIDERS[providerId];
-    if (!connection && !providerInfo?.noAuth) {
+    if (!connection && !providerInfo) {
       return NextResponse.json({ error: "Connection not found" }, { status: 404 });
     }
 
@@ -688,6 +688,15 @@ export async function GET(request, { params }) {
       );
     }
 
+    // Connection-less: only a fetchable keyless catalog works — token-bound
+    // custom resolvers and endpoint-less configs need a stored connection.
+    if (!connection && (typeof config.customResolver === "function" || !config.url)) {
+      return NextResponse.json(
+        { error: `Provider ${providerId} requires a connection to list models` },
+        { status: 400 }
+      );
+    }
+
     // Config-driven custom resolver path (OAuth refresh, non-OpenAI shape, etc.)
     if (connection && typeof config.customResolver === "function") {
       const result = await config.customResolver(connection);
@@ -703,8 +712,10 @@ export async function GET(request, { params }) {
     }
 
     // Get auth token (noAuth configs like free providers skip auth)
-    const token = config.noAuth ? null : (connection.providerSpecificData?.apiKey || connection.accessToken || connection.apiKey);
-    if (!config.noAuth && !token) {
+    const token = connection ? (connection.providerSpecificData?.apiKey || connection.accessToken || connection.apiKey) : null;
+    // With a stored connection, a non-noAuth provider must have a token. Connection-less
+    // attempts go keyless — the upstream decides whether the endpoint accepts it.
+    if (connection && !config.noAuth && !token) {
       return NextResponse.json({ error: "No valid token found" }, { status: 401 });
     }
 
