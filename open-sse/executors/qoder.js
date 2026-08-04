@@ -230,8 +230,31 @@ async function buildQoderRequestBody({ model, body, credentials, log, proxyOptio
  * Critical: Qoder's SSE often keeps the socket open after the terminal
  * [DONE]/error frame (agent keepalive). Non-streaming clients drain via
  * response.text() which hangs until the socket closes — so on terminal
- * events we cancel the upstream reader and close our stream immediately.
  */
+
+const QODER_PRICE_ERR_CODE = 112;
+
+/**
+ * Qoder error bodies are JSON like `{"code":112,"message":"<json or plain>"}`.
+ * Code 112 is the entitlement/billing gate: the account's plan no longer covers
+ * the requested model, and Qoder embeds a pricingUrl to upgrade. Decode it into
+ * an actionable message instead of dumping raw JSON into the chat stream.
+ */
+function decodeQoderError(inner) {
+  if (!inner) return null;
+  let parsed;
+  try { parsed = JSON.parse(inner); } catch { return null; }
+  if (!parsed || parsed.code !== QODER_PRICE_ERR_CODE) return null;
+  let msg = parsed.message;
+  if (msg && typeof msg === "string" && msg.startsWith("{")) {
+    try {
+      const m = JSON.parse(msg);
+      if (m && typeof m.pricingUrl === "string") msg = `plan limit reached - upgrade at ${m.pricingUrl}`;
+    } catch { /* keep raw message */ }
+  }
+  return msg || `plan limit reached (code ${QODER_PRICE_ERR_CODE})`;
+}
+
 function wrapQoderSSE(response, model) {
   if (!response.ok || !response.body) return response;
 
@@ -260,7 +283,7 @@ function wrapQoderSSE(response, model) {
     const statusVal = typeof envelope.statusCodeValue === "number" ? envelope.statusCodeValue : 200;
     const inner = typeof envelope.body === "string" ? envelope.body : "";
     if (statusVal !== 200) {
-      const msg = inner || `upstream status ${statusVal}`;
+      const msg = decodeQoderError(inner) || inner || `upstream status ${statusVal}`;
       const errChunk = JSON.stringify({
         id: `qoder-error-${Date.now()}`,
         object: "chat.completion.chunk",
@@ -596,4 +619,5 @@ export const __test__ = {
   buildQoderRequestBody,
   isQoderPat,
   resolvePatCredential,
+  decodeQoderError,
 };
