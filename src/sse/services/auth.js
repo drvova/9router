@@ -1,4 +1,4 @@
-import { getProviderConnections, validateApiKey, updateProviderConnection, getSettings, getProxyPools } from "@/lib/localDb";
+import { getProviderConnections, validateApiKey, updateProviderConnection, getSettings, getProxyPools, getProviderNodeById } from "@/lib/localDb";
 import { resolveConnectionProxyConfig, pickProxyPoolId } from "@/lib/network/connectionProxy";
 import { formatRetryAfter, checkFallbackError, isModelLockActive, buildModelLockUpdate, getEarliestModelLockUntil } from "open-sse/services/accountFallback.js";
 import { MAX_RATE_LIMIT_COOLDOWN_MS } from "open-sse/config/errorConfig.js";
@@ -59,6 +59,22 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
       };
     };
 
+    // Compatible node (openai/anthropic-compatible-*): the baseUrl lives on the node,
+    // so a keyless endpoint needs no connection row at all — synthesize a virtual
+    // credential from the node when none exists.
+    const buildCompatNodeConnection = async (nodeId) => {
+      if (!nodeId.startsWith("openai-compatible-") && !nodeId.startsWith("anthropic-compatible-") && !nodeId.startsWith("custom-embedding-")) return null;
+      const node = await getProviderNodeById(nodeId);
+      if (!node) return null;
+      return {
+        id: "noauth",
+        connectionName: node.name || "Compatible Node",
+        isActive: true,
+        accessToken: "public",
+        providerSpecificData: { baseUrl: node.baseUrl || "", apiType: node.apiType },
+      };
+    };
+
     // Pure no-auth free providers skip the DB entirely — always the Public connection.
     if (FREE_PROVIDERS[providerId]?.noAuth) {
       return buildPublicConnection();
@@ -74,6 +90,13 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
       if (AI_PROVIDERS[providerId]?.noAuth) {
         log.debug("AUTH", `${provider} | no credentials — using noAuth public connection`);
         return buildPublicConnection();
+      }
+      // Compatible nodes route keyless straight from the node row — no connection
+      // needed when the endpoint accepts requests without a key.
+      const nodeCred = await buildCompatNodeConnection(providerId);
+      if (nodeCred) {
+        log.debug("AUTH", `${provider} | no connections — using node baseUrl keyless`);
+        return nodeCred;
       }
       log.warn("AUTH", `No credentials for ${provider}`);
       return null;
