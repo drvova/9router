@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getProviderConnectionById } from "@/models";
+import { getProviderConnectionById, getProviderNodeById } from "@/models";
 import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider, AI_PROVIDERS } from "@/shared/constants/providers";
 import { GEMINI_CONFIG } from "@/lib/oauth/constants/oauth";
 import { refreshGoogleToken, refreshCodexToken, refreshTokenByProvider, updateProviderCredentials } from "@/sse/services/tokenRefresh";
@@ -213,6 +213,37 @@ const getStaticProviderModels = (providerId) =>
     id: model.id,
     name: model.name || model.id,
   }));
+
+// Compatible-node catalog fetch shared by connection and connection-less paths.
+// The node row carries baseUrl at top level; a connection keeps it in providerSpecificData.
+// Headers are only sent when a key exists — keyless endpoints get a bare request.
+const fetchCompatCatalog = async (entry, { anthropic }) => {
+  const baseUrl = entry.baseUrl || entry.providerSpecificData?.baseUrl;
+  if (!baseUrl) {
+    return { error: `No base URL configured for ${anthropic ? "Anthropic" : "OpenAI"} compatible provider`, status: 400 };
+  }
+  let url = baseUrl.replace(/\/$/, "");
+  if (anthropic && url.endsWith("/messages")) url = url.slice(0, -9);
+  url = `${url}/models`;
+  const key = entry.providerSpecificData?.apiKey || entry.accessToken || entry.apiKey;
+  const headers = { "Content-Type": "application/json" };
+  if (anthropic) {
+    headers["anthropic-version"] = "2023-06-01";
+    if (key) {
+      headers["x-api-key"] = key;
+      headers["Authorization"] = `Bearer ${key}`;
+    }
+  } else if (key) {
+    headers["Authorization"] = `Bearer ${key}`;
+  }
+  const response = await fetch(url, { method: "GET", headers });
+  if (!response.ok) {
+    const errorText = await response.text();
+    return { error: formatUpstreamError(entry.provider || entry.id, response.status, errorText), status: response.status };
+  }
+  const data = await response.json();
+  return { models: data.data || data.models || [], provider: entry.provider || entry.id };
+};
 
 // Generic custom resolver for OAuth providers that need refresh-on-401 + token persist.
 // Receives a `fetchFn(token)` and returns parsed models or throws.
@@ -604,80 +635,27 @@ export async function GET(request, { params }) {
     // decide — only reject ids that aren't a known provider at all.
     const providerId = connection?.provider || id;
     const providerInfo = AI_PROVIDERS[providerId];
-    if (!connection && !providerInfo) {
+
+    // Compatible nodes carry their baseUrl on the node row, so with no connection
+    // the node itself is the source of truth for a keyless catalog fetch.
+    const node = !connection && (isOpenAICompatibleProvider(id) || isAnthropicCompatibleProvider(id))
+      ? await getProviderNodeById(id)
+      : null;
+    if (!connection && !providerInfo && !node) {
       return NextResponse.json({ error: "Connection not found" }, { status: 404 });
     }
 
-    if (connection && isOpenAICompatibleProvider(connection.provider)) {
-      const baseUrl = connection.providerSpecificData?.baseUrl;
-      if (!baseUrl) {
-        return NextResponse.json({ error: "No base URL configured for OpenAI compatible provider" }, { status: 400 });
-      }
-      const url = `${baseUrl.replace(/\/$/, "")}/models`;
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${connection.apiKey}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        return NextResponse.json(
-          { error: formatUpstreamError(connection.provider, response.status, errorText) },
-          { status: response.status }
-        );
-      }
-
-      const data = await response.json();
-      const models = data.data || data.models || [];
-
-      return NextResponse.json({
-        provider: connection.provider,
-        connectionId: connection.id,
-        models
-      });
+    const compat = connection || node;
+    if (compat && isOpenAICompatibleProvider(compat.provider || compat.id)) {
+      const result = await fetchCompatCatalog(compat, { anthropic: false });
+      if (result.error) return NextResponse.json({ error: result.error }, { status: result.status });
+      return NextResponse.json({ provider: result.provider, connectionId: connection?.id || null, models: result.models });
     }
 
-    if (connection && isAnthropicCompatibleProvider(connection.provider)) {
-      let baseUrl = connection.providerSpecificData?.baseUrl;
-      if (!baseUrl) {
-        return NextResponse.json({ error: "No base URL configured for Anthropic compatible provider" }, { status: 400 });
-      }
-
-      baseUrl = baseUrl.replace(/\/$/, "");
-      if (baseUrl.endsWith("/messages")) {
-        baseUrl = baseUrl.slice(0, -9);
-      }
-
-      const url = `${baseUrl}/models`;
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": connection.apiKey,
-          "anthropic-version": "2023-06-01",
-          "Authorization": `Bearer ${connection.apiKey}`
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        return NextResponse.json(
-          { error: formatUpstreamError(connection.provider, response.status, errorText) },
-          { status: response.status }
-        );
-      }
-
-      const data = await response.json();
-      const models = data.data || data.models || [];
-
-      return NextResponse.json({
-        provider: connection.provider,
-        connectionId: connection.id,
-        models
-      });
+    if (compat && isAnthropicCompatibleProvider(compat.provider || compat.id)) {
+      const result = await fetchCompatCatalog(compat, { anthropic: true });
+      if (result.error) return NextResponse.json({ error: result.error }, { status: result.status });
+      return NextResponse.json({ provider: result.provider, connectionId: connection?.id || null, models: result.models });
     }
 
     const config = PROVIDER_MODELS_CONFIG[providerId] || buildRegistryModelsConfig(providerId, connection);
