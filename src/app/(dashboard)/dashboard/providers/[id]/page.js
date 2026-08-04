@@ -769,14 +769,15 @@ export default function ProviderDetailPage() {
   const handleImportModels = async () => {
     if (importingModels) return;
     const activeConnection = connections.find((conn) => conn.isActive !== false);
-    if (!activeConnection) {
+    // noAuth providers list their catalog keyless — no stored connection needed.
+    if (!activeConnection && !providerInfo?.noAuth) {
       alert(translate("Please add an active connection first"));
       return;
     }
 
     setImportingModels(true);
     try {
-      const res = await fetch(`/api/providers/${activeConnection.id}/models`, { cache: "no-store" });
+      const res = await fetch(`/api/providers/${activeConnection ? activeConnection.id : providerId}/models`, { cache: "no-store" });
       const data = await res.json();
       if (!res.ok) {
         alert(data.error || translate("Failed to fetch models"));
@@ -1412,8 +1413,8 @@ export default function ProviderDetailPage() {
           Add Model
         </button>
 
-        {/* Import the provider's live /models catalog — any provider with an active connection */}
-        {connections.some((conn) => conn.isActive !== false) && (
+        {/* Import the provider's live /models catalog — needs an active connection, unless the provider is noAuth */}
+        {(connections.some((conn) => conn.isActive !== false) || providerInfo?.noAuth) && (
           <button
             onClick={handleImportModels}
             disabled={importingModels}

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getProviderConnectionById } from "@/models";
-import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider } from "@/shared/constants/providers";
+import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider, AI_PROVIDERS } from "@/shared/constants/providers";
 import { GEMINI_CONFIG } from "@/lib/oauth/constants/oauth";
 import { refreshGoogleToken, refreshCodexToken, refreshTokenByProvider, updateProviderCredentials } from "@/sse/services/tokenRefresh";
 import { resolveOllamaLocalHost, PROVIDERS } from "open-sse/config/providers.js";
@@ -599,11 +599,16 @@ export async function GET(request, { params }) {
     const { id } = await params;
     const connection = await getProviderConnectionById(id);
 
-    if (!connection) {
+    // Providers flagged noAuth in the registry list their catalog keyless — no
+    // stored connection or key required. id resolves to a provider id when no
+    // connection row exists.
+    const providerId = connection?.provider || id;
+    const providerInfo = AI_PROVIDERS[providerId];
+    if (!connection && !providerInfo?.noAuth) {
       return NextResponse.json({ error: "Connection not found" }, { status: 404 });
     }
 
-    if (isOpenAICompatibleProvider(connection.provider)) {
+    if (connection && isOpenAICompatibleProvider(connection.provider)) {
       const baseUrl = connection.providerSpecificData?.baseUrl;
       if (!baseUrl) {
         return NextResponse.json({ error: "No base URL configured for OpenAI compatible provider" }, { status: 400 });
@@ -635,7 +640,7 @@ export async function GET(request, { params }) {
       });
     }
 
-    if (isAnthropicCompatibleProvider(connection.provider)) {
+    if (connection && isAnthropicCompatibleProvider(connection.provider)) {
       let baseUrl = connection.providerSpecificData?.baseUrl;
       if (!baseUrl) {
         return NextResponse.json({ error: "No base URL configured for Anthropic compatible provider" }, { status: 400 });
@@ -675,16 +680,16 @@ export async function GET(request, { params }) {
       });
     }
 
-    const config = PROVIDER_MODELS_CONFIG[connection.provider] || buildRegistryModelsConfig(connection.provider, connection);
+    const config = PROVIDER_MODELS_CONFIG[providerId] || buildRegistryModelsConfig(providerId, connection);
     if (!config) {
       return NextResponse.json(
-        { error: `Provider ${connection.provider} does not support models listing` },
+        { error: `Provider ${providerId} does not support models listing` },
         { status: 400 }
       );
     }
 
     // Config-driven custom resolver path (OAuth refresh, non-OpenAI shape, etc.)
-    if (typeof config.customResolver === "function") {
+    if (connection && typeof config.customResolver === "function") {
       const result = await config.customResolver(connection);
       if (result.error) {
         return NextResponse.json({ error: result.error }, { status: result.status || 500 });
@@ -703,7 +708,7 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: "No valid token found" }, { status: 401 });
     }
 
-    const baseUrl = connection.provider === "qwen" ? resolveQwenModelsUrl(connection) : config.url;
+    const baseUrl = providerId === "qwen" ? resolveQwenModelsUrl(connection) : config.url;
 
     const requestWithToken = (activeToken) => {
       const url = config.authQuery ? `${baseUrl}?${config.authQuery}=${activeToken}` : baseUrl;
@@ -726,7 +731,7 @@ export async function GET(request, { params }) {
     // An OAuth access token that expired between chat calls rejects with 401/403.
     // Refresh through the provider's registered handler, persist, and retry once —
     // the same contract buildOAuthResolver gives its hand-written providers.
-    if (!response.ok && (response.status === 401 || response.status === 403) && connection.refreshToken) {
+    if (!response.ok && (response.status === 401 || response.status === 403) && connection?.refreshToken) {
       const refreshed = await refreshTokenByProvider(connection.provider, connection);
       if (refreshed?.accessToken && refreshed.accessToken !== token) {
         await updateProviderCredentials(connection.id, {
@@ -750,8 +755,8 @@ export async function GET(request, { params }) {
     const models = config.parseResponse(data);
 
     return NextResponse.json({
-      provider: connection.provider,
-      connectionId: connection.id,
+      provider: providerId,
+      connectionId: connection?.id || null,
       models
     });
   } catch (error) {

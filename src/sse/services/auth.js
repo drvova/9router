@@ -68,8 +68,9 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
     log.debug("AUTH", `${provider} | total connections: ${connections.length}, excludeIds: ${excludeSet.size > 0 ? [...excludeSet].join(",") : "none"}, model: ${model || "any"}`);
 
     if (connections.length === 0) {
-      // Dual-mode providers (e.g. blackbox) also serve keyless — fall back to the
-      // Public connection instead of failing before the upstream gets a chance.
+      // Dual-mode providers flagged noAuth in the registry also serve keyless —
+      // fall back to the Public connection instead of failing before the upstream
+      // gets a chance.
       if (AI_PROVIDERS[providerId]?.noAuth) {
         log.debug("AUTH", `${provider} | no credentials — using noAuth public connection`);
         return buildPublicConnection();
