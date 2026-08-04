@@ -112,6 +112,7 @@
   "blackbox": {
     "baseUrl": "https://api.blackbox.ai/v1/chat/completions",
     "thinkingFormat": "openai",
+    "noAuth": true,
     "format": "openai",
     "transports": [
       {

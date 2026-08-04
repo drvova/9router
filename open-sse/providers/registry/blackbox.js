@@ -19,6 +19,7 @@ export default {
     },
   },
   category: "apikey",
+  noAuth: true, // upstream accepts keyless requests (verified live: any/bogus bearer OK)
   serviceKinds: ["llm"],
   thinkingConfig: {
     options: ["auto", "none", "low", "medium", "high", "xhigh"],
@@ -27,6 +28,7 @@ export default {
   transport: {
     baseUrl: "https://api.blackbox.ai/v1/chat/completions",
     thinkingFormat: "openai",
+    noAuth: true, // send no key; upstream serves keyless models
   },
   // Multi-endpoint: pick the transport matching client sourceFormat to skip translation.
   // Anthropic endpoint verified live 2026-07-22 (auth-error + ctrl-404 probe).
