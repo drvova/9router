@@ -1280,6 +1280,37 @@ export default function ProviderDetailPage() {
     }
   };
 
+  // Same rows renderModelsSection draws, as full model IDs — custom rows first,
+  // then built-ins (disabled ones excluded). Mirrors the per-row copy format.
+  const copyAllModelIds = (() => {
+    const rows = [];
+    const push = (id) => {
+      const full = `${providerDisplayAlias}/${id}`;
+      const suffix = resolveThinkingSuffix(id);
+      rows.push(suffix ? `${full}(${suffix})` : full);
+    };
+    getProviderCustomModelRows({
+      customModels,
+      modelAliases,
+      providerAlias: providerStorageAlias,
+      builtInModels: isCompatible ? undefined : models,
+      type: "llm",
+    }).forEach((m) => push(m.id));
+    if (!isCompatible) {
+      const disabled = new Set(disabledModelIds);
+      [...models,
+        ...kiloFreeModels.filter((fm) => !models.some((m) => m.id === fm.id)),
+      ]
+        .filter((m) => { const k = getModelKind(m); return !k || k === "llm"; })
+        .forEach((m) => { if (!disabled.has(m.id)) push(m.id); });
+    }
+    return rows;
+  })();
+
+  const handleCopyAllModels = () => {
+    copy(copyAllModelIds.join("\n"), "copy-all-models");
+  };
+
   const renderModelsSection = () => {
     if (isCompatible) {
       return (
@@ -2018,27 +2049,39 @@ export default function ProviderDetailPage() {
               </select>
             )}
           </div>
-          {!isCompatible && (() => {
-            const allIds = [
-              ...models,
-              ...kiloFreeModels.filter((fm) => !models.some((m) => m.id === fm.id)),
-            ].filter((m) => { const k = getModelKind(m); return !k || k === "llm"; }).map((m) => m.id);
-            const activeIds = allIds.filter((id) => !disabledModelIds.includes(id));
-            return (
-              <div className="flex gap-2">
-                {disabledModelIds.length > 0 && (
-                  <Button size="sm" variant="secondary" icon="restart_alt" onClick={handleEnableAll}>
-                    Active All
-                  </Button>
-                )}
-                {activeIds.length > 0 && (
-                  <Button size="sm" variant="secondary" icon="block" onClick={() => handleDisableAll(activeIds)}>
-                    Disable All
-                  </Button>
-                )}
-              </div>
-            );
-          })()}
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              size="sm"
+              variant="secondary"
+              icon={copied === "copy-all-models" ? "check" : "content_copy"}
+              onClick={handleCopyAllModels}
+              disabled={copyAllModelIds.length === 0}
+              title="Copy all model IDs, one per line"
+            >
+              {copied === "copy-all-models" ? "Copied!" : "Copy All"}
+            </Button>
+            {!isCompatible && (() => {
+              const allIds = [
+                ...models,
+                ...kiloFreeModels.filter((fm) => !models.some((m) => m.id === fm.id)),
+              ].filter((m) => { const k = getModelKind(m); return !k || k === "llm"; }).map((m) => m.id);
+              const activeIds = allIds.filter((id) => !disabledModelIds.includes(id));
+              return (
+                <>
+                  {disabledModelIds.length > 0 && (
+                    <Button size="sm" variant="secondary" icon="restart_alt" onClick={handleEnableAll}>
+                      Active All
+                    </Button>
+                  )}
+                  {activeIds.length > 0 && (
+                    <Button size="sm" variant="secondary" icon="block" onClick={() => handleDisableAll(activeIds)}>
+                      Disable All
+                    </Button>
+                  )}
+                </>
+              );
+            })()}
+          </div>
         </div>
         {!!modelsTestError && (
           <p className="text-xs text-red-500 mb-3 break-words">{modelsTestError}</p>
