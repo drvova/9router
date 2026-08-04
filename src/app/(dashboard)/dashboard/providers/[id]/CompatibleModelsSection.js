@@ -125,11 +125,12 @@ export default function CompatibleModelsSection({ providerStorageAlias, provider
   const handleImport = async () => {
     if (importing) return;
     const activeConnection = connections.find((conn) => conn.isActive !== false);
-    if (!activeConnection) return;
 
     setImporting(true);
     try {
-      const res = await fetch(`/api/providers/${activeConnection.id}/models`);
+      // Connection-less: fetch keyless from the node id — the route resolves the
+      // node row (baseUrl) and lets the upstream decide if a key is needed.
+      const res = await fetch(`/api/providers/${activeConnection ? activeConnection.id : providerStorageAlias}/models`);
       const data = await res.json();
       if (!res.ok) {
         alert(data.error || "Failed to import models");
@@ -158,8 +159,6 @@ export default function CompatibleModelsSection({ providerStorageAlias, provider
     }
   };
 
-  const canImport = connections.some((conn) => conn.isActive !== false);
-
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-text-muted">
@@ -182,16 +181,10 @@ export default function CompatibleModelsSection({ providerStorageAlias, provider
         <Button size="sm" icon="add" onClick={handleAdd} disabled={!newModel.trim() || adding}>
           {adding ? "Adding..." : "Add"}
         </Button>
-        <Button size="sm" variant="secondary" icon="download" onClick={handleImport} disabled={!canImport || importing}>
+        <Button size="sm" variant="secondary" icon="download" onClick={handleImport} disabled={importing}>
           {importing ? "Importing..." : "Import from /models"}
         </Button>
       </div>
-
-      {!canImport && (
-        <p className="text-xs text-text-muted">
-          Add a connection to enable importing models.
-        </p>
-      )}
 
       {allModels.length > 0 && (
         <div className="flex flex-col gap-3">
@@ -203,7 +196,7 @@ export default function CompatibleModelsSection({ providerStorageAlias, provider
               copied={copied}
               onCopy={onCopy}
               onDeleteAlias={() => source === "custom" ? onDeleteCustomModel(id) : onDeleteAlias(alias)}
-              onTest={connections.length > 0 ? () => handleTestModel(id) : undefined}
+              onTest={() => handleTestModel(id)}
               testStatus={modelTestResults[id]}
               isTesting={testingModelId === id}
             />
